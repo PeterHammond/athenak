@@ -445,5 +445,7 @@ INSTANTIATE_FOFC(Primitive::EOSCompOSE<Primitive::NormalLogs>, Primitive::ResetF
 INSTANTIATE_FOFC(Primitive::EOSCompOSE<Primitive::NQTLogs>, Primitive::ResetFloor)
 INSTANTIATE_FOFC(Primitive::EOSHybrid<Primitive::NormalLogs>, Primitive::ResetFloor)
 INSTANTIATE_FOFC(Primitive::EOSHybrid<Primitive::NQTLogs>, Primitive::ResetFloor)
+INSTANTIATE_FOFC(Primitive::EOSMultiTable<Primitive::NormalLogs>, Primitive::ResetFloor)
+INSTANTIATE_FOFC(Primitive::EOSMultiTable<Primitive::NQTLogs>, Primitive::ResetFloor)
 
 } // namespace dyngr
