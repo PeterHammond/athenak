@@ -55,15 +55,43 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return initialised;
     }
 
+    /// Set the number of species. Throw an exception if
+    /// the number of species is invalid.
+    KOKKOS_INLINE_FUNCTION void SetNSpecies(int n) {
+      // Number of species must be within limits
+      assert (n<=MAX_SPECIES && n>=0);
+
+      // Only 1 species is implemented for tables
+    
+      n_species = n;
+      return;
+    }
+
+    /// Set the EOS unit system.
+    KOKKOS_INLINE_FUNCTION void SetEOSUnitSystem(UnitSystem units) {
+      eos_units = units;
+    }
+    DvceArray2D<Real> y_weights, n_weights; // weights for calculating ni and yi from nb and Y
   protected:
-    /// Constructor
-    EOSMultiTable(): t_union("T",1), lt_union("T",1) {
+    /// Constructor TODO Fix for new memory structure
+    EOSMultiTable(): 
+        nni("nni",1), nyi("nyi",1), nt("nt",1),
+        inv_log_ni("inv_dlog_ni",1), inv_yi("inv_dyi",1), inv_log_t("inv_dlog_t",1),
+        Pmin_fac("Pmin_fac",1), Pmin("Pmin",1),
+        ni("ni",1), log_ni("log_ni",1),
+        yi("yi",1),
+        t("t",1), log_t("log_t",1),
+        table("table", 1),
+        offset_ni("offset_ni", 1), offset_yi("offset_yi", 1), offset_t("offset_t", 1), offset_table("offset_table", 1),
+        y_weights("y_weights", 1, 1), n_weights("n_weights", 1, 1),
+        t_union("T",1), log_t_union("T",1) {
       initialised = false;
       use_photons = false;
 
       n_tables_2D = 0;
       n_tables_3D = 0;
       n_species   = 0;
+      nt_union    = 0;
       eos_units = MakeNuclear();    
       min_h = std::numeric_limits<Real>::max();
       mb    = std::numeric_limits<Real>::quiet_NaN();
@@ -448,7 +476,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     KOKKOS_INLINE_FUNCTION void GetPartialNi(int table_idx, Real *Y, Real &Ni) {
       Ni = n_weights(table_idx,0);
-      for (int i=0; i<n_scalars; ++i) {
+      for (int i=0; i<n_species; ++i) {
         Ni += n_weights(table_idx,1+i)*Y[i];
       }
       return;
@@ -456,7 +484,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     KOKKOS_INLINE_FUNCTION void GetPartialYi(int table_idx, Real *Y, Real &Yi) {
       Yi = y_weights(table_idx,0);
-      for (int i=0; i<n_scalars; ++i) {
+      for (int i=0; i<n_species; ++i) {
         Yi += y_weights(table_idx,1+i)*Y[i];
       }
       return;
@@ -566,10 +594,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       // return offset_table(table_idx) + iv*(nni(table_idx)*nt(table_idx)) + in*(nt(table_idx)) + it;
       return offset_table(table_idx) + it + nt(table_idx)*(in + nni(table_idx)*iv);
     }
-
-    /// Private vars
-    // Number of composition scalars to use in Y
-    int n_scalars;
 
     // Minimum enthalpy per baryon
     Real min_h;
