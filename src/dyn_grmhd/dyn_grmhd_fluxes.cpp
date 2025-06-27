@@ -411,5 +411,9 @@ INSTANTIATE_CALC_FLUXES(Primitive::EOSHybrid<Primitive::NormalLogs>,
                         Primitive::ResetFloor)
 INSTANTIATE_CALC_FLUXES(Primitive::EOSHybrid<Primitive::NQTLogs>,
                         Primitive::ResetFloor)
+INSTANTIATE_CALC_FLUXES(Primitive::EOSMultiTable<Primitive::NormalLogs>,
+                        Primitive::ResetFloor)
+INSTANTIATE_CALC_FLUXES(Primitive::EOSMultiTable<Primitive::NQTLogs>,
+                        Primitive::ResetFloor)
 
 } // namespace dyngr
