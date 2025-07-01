@@ -441,7 +441,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       // printf("%d %f %f %d %f %f %d %f %f\n",in[0],wn0[0],wn1[0],in[1],wn0[1],wn1[1],iy[0],wy0[0],wy1[0]);
       
-      // TODO Fix
       auto f = [=](Real lt) {
         return RootFunction(lt+log_t_offset, var, iv, in, iy, wn0, wn1, wy0, wy1, this);
       };
