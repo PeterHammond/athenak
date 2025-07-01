@@ -14,7 +14,7 @@
 
 /// For the avoidance of doubt, we use 'nb' to refer to the total 
 /// conserved baryon number density, and 'n' for the number density in 
-/// each subtable. 3D tables are considered first, then 2D.
+/// each subtable. 3D tables are stored first, then 2D.
 
 #include <string>
 #include <limits>
@@ -32,9 +32,9 @@ namespace Primitive {
 
 template<typename LogPolicy>
 class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public SupportsEntropy {
- private:
-  using LogPolicy::log2_;
-  using LogPolicy::exp2_;
+  private:
+    using LogPolicy::log2_;
+    using LogPolicy::exp2_;
  public:
     enum PartialTableVariables {
       ECLOGP  = 0,  //! log (pressure / 1 MeV fm^-3)
@@ -60,8 +60,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     KOKKOS_INLINE_FUNCTION void SetNSpecies(int n) {
       // Number of species must be within limits
       assert (n<=MAX_SPECIES && n>=0);
-
-      // Only 1 species is implemented for tables
     
       n_species = n;
       return;
@@ -85,6 +83,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         offset_ni("offset_ni", 1), offset_yi("offset_yi", 1), offset_t("offset_t", 1), offset_table("offset_table", 1),
         y_weights("y_weights", 1, 1), n_weights("n_weights", 1, 1),
         t_union("T",1), log_t_union("T",1) {
+
       initialised = false;
       use_photons = false;
 
@@ -92,7 +91,9 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       n_tables_3D = 0;
       n_species   = 0;
       nt_union    = 0;
-      eos_units = MakeNuclear();    
+
+      eos_units = MakeNuclear();   
+
       min_h = std::numeric_limits<Real>::max();
       mb    = std::numeric_limits<Real>::quiet_NaN();
       min_n = std::numeric_limits<Real>::quiet_NaN();
