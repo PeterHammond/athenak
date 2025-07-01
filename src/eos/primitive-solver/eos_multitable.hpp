@@ -71,7 +71,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
     DvceArray2D<Real> y_weights, n_weights; // weights for calculating ni and yi from nb and Y
   protected:
-    /// Constructor TODO Fix for new memory structure
+    /// Constructor
     EOSMultiTable(): 
         nni("nni",1), nyi("nyi",1), nt("nt",1),
         inv_log_ni("inv_dlog_ni",1), inv_yi("inv_dyi",1), inv_log_t("inv_dlog_t",1),
@@ -407,7 +407,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         weight_idx_ln(i, &(wn0[i]), &(wn1[i]), &(in[i]), log2_(ni));
       }
       
-      // TODO Fix for new memory structure
       auto f = [=](Real lt) {
         return RootFunction(lt+log_t_offset, var, iv, in, iy, wn0, wn1, wy0, wy1);
       };
