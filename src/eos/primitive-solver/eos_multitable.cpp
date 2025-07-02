@@ -11,7 +11,7 @@
 using namespace Primitive;
 
 template<typename LogPolicy>
-void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
+bool EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
   if (initialised==false) {
     // TODO
 
@@ -20,13 +20,13 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
 }
 
 template<typename LogPolicy>
-void EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname) {
+bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname) {
   //TODO
 }
 
 
 template<typename LogPolicy>
-void EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname) {
+bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname) {
   //TODO
 }
 
