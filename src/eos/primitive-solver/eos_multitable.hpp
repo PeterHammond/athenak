@@ -48,7 +48,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     };
 
     /// Read the table files.
-    void ReadTableFromFile(std::string fname);
+    bool ReadTableFromFile(std::string fname);
     
     /// Check if the EOS has been initialized properly.
     KOKKOS_INLINE_FUNCTION bool IsInitialized() const {
@@ -87,10 +87,14 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       initialised = false;
       use_photons = false;
 
-      n_tables_2D = 0;
-      n_tables_3D = 0;
-      n_species   = 0;
-      nt_union    = 0;
+      n_tables_2D  = 0;
+      n_tables_3D  = 0;
+      n_ni_full    = 0;
+      n_yi_full    = 0;
+      n_T_full     = 0;
+      n_table_full = 0;
+      n_species    = 0;
+      nt_union     = 0;
 
       eos_units = MakeNuclear();   
 
@@ -287,8 +291,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
   protected:
     /// Low level functions not intended for outside use
     // Read subtable files
-    void Read2DTableFromFile(std::string table_name);
-    void Read3DTableFromFile(std::string table_name);
+    bool Read2DTableFromFile(std::string table_name);
+    bool Read3DTableFromFile(std::string table_name);
 
     // Evaluation of subtables
     KOKKOS_INLINE_FUNCTION Real PartialPressure3D(int table_idx, Real nb, Real T, Real *Y) {
@@ -621,6 +625,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     // Subtables
     int n_tables_3D;
     int n_tables_2D;
+    int n_ni_full;
+    int n_yi_full;
+    int n_T_full;
+    int n_table_full;
 
     // Table storage
     DvceArray1D<int> nni, nyi, nt;                   // <number density, fraction, temperature> samples for each subtable
@@ -634,7 +642,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     DvceArray1D<Real> table;                                       // data for each subtable sequentially
     DvceArray1D<int> offset_ni, offset_yi, offset_t, offset_table; // offsets for start of each subtables data
 
-    DvceArray2D<Real> y_weights, n_weights; // weights for calculating ni and yi from nb and Y
+    DvceArray2D<int> y_weights, n_weights; // weights for calculating ni and yi from nb and Y
 
 
     // Union of temperatures for rootsolver
