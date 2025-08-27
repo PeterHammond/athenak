@@ -98,6 +98,8 @@ DynGRMHD* BuildDynGRMHD(MeshBlockPack *ppack, ParameterInput *pin) {
     eos_policy = DynGRMHD_EOS::eos_compose;
   } else if (eos_string.compare("hybrid") == 0) {
     eos_policy = DynGRMHD_EOS::eos_hybrid;
+  } else if (eos_string.compare("multitable") == 0) {
+    eos_policy = DynGRMHD_EOS::eos_multitable;
   } else {
     std::cout << "### FATAL ERROR in " <<__FILE__ << " at line " << __LINE__
               << std::endl << "<mhd> dyn_eos = '" << eos_string
