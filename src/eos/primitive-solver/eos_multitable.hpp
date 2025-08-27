@@ -48,7 +48,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     };
 
     /// Read the table files.
-    bool ReadTableFromFile(std::string fname);
+    void ReadTableFromFile(std::string fname);
     
     /// Check if the EOS has been initialized properly.
     KOKKOS_INLINE_FUNCTION bool IsInitialized() const {
@@ -800,7 +800,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     NumTools::Root root;
     RootFunctor RootFunction;
-    Real log_t_offset = 10.0;
+    Real log_t_offset=10.0;
 
 }; // class EOSMultiTable
 

@@ -26,7 +26,7 @@
 namespace Primitive {
 
 template<typename LogPolicy>
-bool EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
+void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
   if (initialised==false) {
 
     std::ifstream file;
@@ -316,6 +316,8 @@ std::size_t first_char, last_char, equal_char, hash_char, len;
   } else {
     comment = "";
   }
+
+  return;
 }
 
 template<typename LogPolicy>
