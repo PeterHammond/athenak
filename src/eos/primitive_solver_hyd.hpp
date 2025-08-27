@@ -61,6 +61,7 @@ class PrimitiveSolverHydro {
         std::exit(EXIT_FAILURE);
       }
     }
+    
     // Parameters for CompOSE EoS
     if constexpr (
          std::is_same_v<Primitive::EOSCompOSE<Primitive::NormalLogs>, EOSPolicy> ||
@@ -90,7 +91,8 @@ class PrimitiveSolverHydro {
       // Ensure table was read properly
       assert(ps.GetEOSMutable().IsInitialized());
     }
-        // Parameters for Hybrid EoS
+    
+    // Parameters for Hybrid EoS
     if constexpr (
          std::is_same_v<Primitive::EOSHybrid<Primitive::NormalLogs>, EOSPolicy> ||
          std::is_same_v<Primitive::EOSHybrid<Primitive::NQTLogs>, EOSPolicy>) {
@@ -121,7 +123,8 @@ class PrimitiveSolverHydro {
       // Ensure table was read properly
       assert(ps.GetEOSMutable().IsInitialized());
     }
-        // Parameters for MultiTable EoS
+
+    // Parameters for MultiTable EoS
     if constexpr (
          std::is_same_v<Primitive::EOSMultiTable<Primitive::NormalLogs>, EOSPolicy> || 
          std::is_same_v<Primitive::EOSMultiTable<Primitive::NQTLogs>, EOSPolicy>) {
