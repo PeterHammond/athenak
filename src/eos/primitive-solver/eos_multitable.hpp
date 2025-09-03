@@ -728,6 +728,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
               var_pt += pparent->photonPressureConstant * pow(pparent->exp2_(lt),4);
             } else if (iv==1) {
               var_pt += pparent->photonEnergyConstant * pow(pparent->exp2_(lt),4);
+            } else if (iv==2) {
+              var_pt += pparent->photonEntropyConstant * pow(pparent->exp2_(lt),3);
             }
           }
 
