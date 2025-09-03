@@ -101,7 +101,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
   // 1D EoS for setting scalars if using CompOSE EoS
   tov::TabulatedEOS *p1Deos;
-  if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) {
+  if ((pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) || 
+      (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable)) {
     p1Deos = new tov::TabulatedEOS(pin);
   }
 
@@ -256,7 +257,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
           // If we're using a tabulated EOS, we need to get the pressure directly from
           // the cold EOS because Lorene usually returns garbage. We also use this
           // opportunity to get the electron fraction.
-          if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) {
+          if ((pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) || 
+              (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable)) {
             host_w0(m, IPR, k, j, i) = p1Deos->template
               GetPFromRho<tov::LocationTag::Host>(host_w0(m,IDN,k,j,i));
             if (pmbp->pmhd->nscalars>=1) {
@@ -297,7 +299,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
   // Cleanup
   delete bns;
-  if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) {
+  if ((pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) || 
+      (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable)) {
     delete p1Deos;
   }
 
@@ -316,7 +319,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // EOS because we pull the energy straight from the cold EOS.
   // TODO(JMF): This can be refactored to be EOS generic such that we no longer rely on
   // Lorene's epsilon for any EOS.
-  if (pmbp->pdyngr->eos_policy != DynGRMHD_EOS::eos_compose) {
+  if ((pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) || 
+      (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable)) {
     pmbp->pdyngr->ConvertInternalEnergyToPressure(0, (ncells1-1),
                                                   0, (ncells2-1), 0, (ncells3-1));
   }
