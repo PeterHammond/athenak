@@ -23,7 +23,7 @@ class TabulatedEOS {
   DualArray1D<Real> m_log_rho;
   DualArray1D<Real> m_log_p;
   DualArray1D<Real> m_log_e;
-  DualArray1D<Real> m_ye;
+  DualArray2D<Real> m_yi;
 
   Real dlrho;
   Real lrho_min;
@@ -31,8 +31,9 @@ class TabulatedEOS {
   Real lP_min;
   Real lP_max;
 
-  bool has_ye = false;
-  Real ye_atmosphere;
+  bool has_yi = false;
+  int n_species = 0;
+  Real yi_atmosphere[MAX_SPECIES];
 
   std::string fname;
   size_t m_nn;
@@ -76,14 +77,27 @@ class TabulatedEOS {
     // Get table dimensions
     auto& point_info = table.GetPointInfo();
     m_nn = point_info[0].second;
-    has_ye = table.HasField("Y[e]");
-
+    bool has_ye = table.HasField("Y[e]");
+    bool has_ym = table.HasField("Y[mu]");
+    if (!has_ye && !has_ym) {
+      has_yi = false;
+      n_species = 0;
+    } else if (has_ye && !has_ym) {
+      has_yi = true;
+      n_species = 1;
+    } else if (has_ye && has_ym) {
+      has_yi = true;
+      n_species = 2;
+    } else {
+      abort();
+    }
+    
     // Allocate storage
     Kokkos::realloc(m_log_rho, m_nn);
     Kokkos::realloc(m_log_p, m_nn);
     Kokkos::realloc(m_log_e, m_nn);
-    if (has_ye) {Kokkos::realloc(m_ye, m_nn);}
-
+    if (has_yi) {Kokkos::realloc(m_yi, m_nn, MAX_SPECIES);}
+    
     // Read rho
     test_field(table.HasField("nb"), "nb");
     Real * table_nb = table["nb"];
@@ -116,29 +130,53 @@ class TabulatedEOS {
 
 
     // Read electron fraction (optional)
-    if (has_ye) {
+    if (has_yi) {
       Real * table_ye = table["Y[e]"];
       for (size_t in = 0; in < m_nn; in++) {
-        m_ye.h_view(in) = table_ye[in];
+        m_yi.h_view(in,0) = table_ye[in];
+      }
+
+    // Read muon fraction (optional)
+      if (has_ym) {
+        Real * table_ym = table["Y[mu]"];
+        for (size_t in = 0; in < m_nn; in++) {
+          m_yi.h_view(in,1) = table_ym[in];
+        }
       }
     }
 
+
     std::cout << "Loaded table " << fname << std::endl
+              << "  N = " << m_nn << ", n_species = " << n_species << std::endl
               << "  rho = [" << exp(lrho_min) << ", " << exp(lrho_max) << "]" << std::endl
               << "  P = [" << exp(lP_min) << ", " << exp(lP_max) << "]" << std::endl;
 
-    ye_atmosphere = pin->GetOrAddReal("mhd", "s0_atmosphere",0.5);
+    for (int i=0; i<n_species; ++i) {
+      std::stringstream spec_name;
+      spec_name << "s" << i << "_atmosphere";
+      yi_atmosphere[i] = pin->GetOrAddReal("mhd", spec_name.str(),0.5);
+    }
 
     // Sync the views to the GPU
     m_log_rho.template modify<HostMemSpace>();
     m_log_p.template modify<HostMemSpace>();
     m_log_e.template modify<HostMemSpace>();
-    if (has_ye) {m_ye.template modify<HostMemSpace>();}
+    if (has_yi) {m_yi.template modify<HostMemSpace>();}
 
     m_log_rho.template sync<DevExeSpace>();
     m_log_p.template sync<DevExeSpace>();
     m_log_e.template sync<DevExeSpace>();
-    if (has_ye) {m_ye.template sync<DevExeSpace>();}
+    if (has_yi) {m_yi.template sync<DevExeSpace>();}
+    
+    Real test_rho = 0.161616*mb*unit_nuc.MassDensityConversion(unit_geo);
+    Real test_press = GetPFromRho<tov::LocationTag::Device>(test_rho);
+    Real test_rho_from_p = GetRhoFromP<tov::LocationTag::Device>(test_press);
+
+    printf("1D table test: rho=%e\n",test_rho);
+    printf("PfromRho: p=%e\n",test_press);
+    printf("RhofromP: rho=%e, abserr=%e, relerr=%e\n",test_rho_from_p,test_rho_from_p-test_rho,(test_rho_from_p-test_rho)/test_rho);
+
+
   }
 
   template<LocationTag loc>
@@ -177,12 +215,13 @@ class TabulatedEOS {
     }
   }
 
+  /*
   template<LocationTag loc>
   KOKKOS_INLINE_FUNCTION
   Real GetYeFromRho(Real rho) const {
     Real lrho = log(rho);
     if (lrho < lrho_min || !has_ye) {
-      return ye_atmosphere;
+      return yi_atmosphere[0];
     }
     int lb = static_cast<int>((lrho-lrho_min)/dlrho);
     int ub = lb + 1;
@@ -192,6 +231,38 @@ class TabulatedEOS {
     } else {
       return Interpolate(lrho, m_log_rho.d_view(lb), m_log_rho.d_view(ub),
                           m_ye.d_view(lb), m_ye.d_view(ub));
+    }
+  }
+*/
+
+  template<LocationTag loc>
+  KOKKOS_INLINE_FUNCTION
+  void GetYiFromRho(Real rho, Real Y[MAX_SPECIES]) const {
+    Real lrho = log(rho);
+    
+    if (lrho < lrho_min || !has_yi) {
+      for (int i=0; i<n_species; ++i) {
+        Y[i] = yi_atmosphere[i];
+      }
+      return;
+    }
+
+    int lb = static_cast<int>((lrho-lrho_min)/dlrho);
+    int ub = lb + 1;
+    
+    if constexpr (loc == LocationTag::Host) {
+      for (int i=0; i<n_species; ++i) {
+        Y[i] = Interpolate(lrho, m_log_rho.h_view(lb), m_log_rho.h_view(ub),
+                           m_yi.h_view(lb,i), m_yi.h_view(ub,i)); 
+      }
+      return; 
+
+      } else {
+      for (int i=0; i<n_species; ++i) {
+        Y[i] = Interpolate(lrho, m_log_rho.d_view(lb), m_log_rho.d_view(ub),
+                           m_yi.d_view(lb,i), m_yi.d_view(ub,i));
+      }
+      return;
     }
   }
 

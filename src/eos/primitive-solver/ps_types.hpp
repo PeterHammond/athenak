@@ -16,6 +16,7 @@
 
 #define MAX_SPECIES 3
 #define NHYDRO ((5) + (MAX_SPECIES))
+#define MAX_TABLES (MAX_SPECIES + 2)
 
 enum ConsIndex {CDN=0, CSX=1, CSY=2, CSZ=3, CTA=4, CYD=5, NCONS=(NHYDRO)};
 // FIXME: Make sure that the position of IYF makes sense.
