@@ -316,42 +316,6 @@ std::size_t first_char, last_char, equal_char, hash_char, len;
   } else {
     comment = "";
   }
-
-  return;
-}
-
-
-template<typename LogPolicy>
-void EOSMultiTable<LogPolicy>::ParseLine(std::string line, std::string& name, 
-                                         std::string& value, std::string& comment) const {
-std::size_t first_char, last_char, equal_char, hash_char, len;
-  first_char = line.find_first_not_of(" ");   // find first non-white space
-  equal_char = line.find_first_of("=");       // find "=" char
-  hash_char  = line.find_first_of("#");       // find "#" (optional)
-
-  // copy substring into name, remove white space at end of name
-  len = equal_char - first_char;
-  name.assign(line, first_char, len);
-
-  last_char = name.find_last_not_of(" ");
-  name.erase(last_char+1, std::string::npos);
-
-  // copy substring into value, remove white space at start and end
-  len = hash_char - equal_char - 1;
-  value.assign(line, equal_char+1, len);
-
-  first_char = value.find_first_not_of(" ");
-  value.erase(0, first_char);
-
-  last_char = value.find_last_not_of(" ");
-  value.erase(last_char+1, std::string::npos);
-
-  // copy substring into comment, if present
-  if (hash_char != std::string::npos) {
-    comment = line.substr(hash_char);
-  } else {
-    comment = "";
-  }
 }
 
 template<typename LogPolicy>
