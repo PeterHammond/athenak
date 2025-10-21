@@ -225,7 +225,11 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         dsdT += 3.0 * photonEntropyConstant * pow(T,2.0);
       }
 
-      return (dpdn - dpdT*dsdn/(nb*dsdT))/h;
+      Real cs2 = (dpdn - dpdT*dsdn/(nb*dsdT))/h;
+      if (cs2<=0.0 || cs2>=1.0) {
+        printf("cs2 OOB - nb,T,Y: %e %e %e %e\n", nb,T,Y[0],cs2);
+      }
+      return Kokkos::sqrt(cs2);
     }
 
     /// Calculate the specific internal energy per unit mass
@@ -407,12 +411,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       assert(iv==ECLOGP || iv==ECLOGE || iv==ECENTD);
 
       // Indicies and weights
-      int *in = new int[n_tables_3D + n_tables_2D]; 
-      int *iy = new int[n_tables_3D];
-      Real *wn0 = new Real[n_tables_3D + n_tables_2D];
-      Real *wn1 = new Real[n_tables_3D + n_tables_2D];
-      Real *wy0 = new Real[n_tables_3D];
-      Real *wy1 = new Real[n_tables_3D];
+      int in[MAX_TABLES], iy[MAX_TABLES];
+      Real wn0[MAX_TABLES], wn1[MAX_TABLES], wy0[MAX_TABLES], wy1[MAX_TABLES];
 
       for (int i=0; i<n_tables_3D; ++i) {
         Real ni, yi;
@@ -421,7 +421,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         weight_idx_ln(i, &(wn0[i]), &(wn1[i]), &(in[i]), log2_(ni));
         weight_idx_yi(i, &(wy0[i]), &(wy1[i]), &(iy[i]), yi);
 
-        printf("%d %e %e %e %e\n",i,nb,Y[0],ni,yi);
+        // printf("%d %e %e %e %e\n",i,nb,Y[0],ni,yi);
       }
 
       for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
@@ -430,10 +430,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
         weight_idx_ln(i, &(wn0[i]), &(wn1[i]), &(in[i]), log2_(ni));
 
-        printf("%d %e %e %e\n",i,nb,Y[0],ni);
+        // printf("%d %e %e %e\n",i,nb,Y[0],ni);
       }
 
-      printf("%d %f %f %d %f %f %d %f %f\n",in[0],wn0[0],wn1[0],in[1],wn0[1],wn1[1],iy[0],wy0[0],wy1[0]);
+      // printf("%d %f %f %d %f %f %d %f %f\n",in[0],wn0[0],wn1[0],in[1],wn0[1],wn1[1],iy[0],wy0[0],wy1[0]);
       
       // TODO Fix
       auto f = [=](Real lt) {
@@ -448,16 +448,16 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real flo = f(lt_lo);
       Real fhi = f(lt_hi);
       
-      Real var_lo, var_hi;
-      if (iv==0) {
-        var_lo = log2_(Pressure(nb, t_union(ilo), Y));
-        var_hi = log2_(Pressure(nb, t_union(ihi), Y));
-      } else if (iv==1) {
-        var_lo = log2_(Energy(nb, t_union(ilo), Y));
-        var_hi = log2_(Energy(nb, t_union(ihi), Y));
-      }
+      // Real var_lo, var_hi;
+      //if (iv==0) {
+      //  var_lo = log2_(Pressure(nb, t_union(ilo), Y));
+      //  var_hi = log2_(Pressure(nb, t_union(ihi), Y));
+      //} else if (iv==1) {
+      //  var_lo = log2_(Energy(nb, t_union(ilo), Y));
+      //  var_hi = log2_(Energy(nb, t_union(ihi), Y));
+      //}
 
-      printf("%d %e %e %e %e %e %d %d %e %e %e %e\n",iv,var,var_lo,var_hi,nb,Y[0],ilo,ihi,lt_lo,lt_hi,flo,fhi);
+      // printf("%d %e %e %e %e %e %d %d %e %e %e %e\n",iv,var,var_lo,var_hi,nb,Y[0],ilo,ihi,lt_lo,lt_hi,flo,fhi);
 
       while (flo*fhi>0){
         if (ilo == ihi - 1) {
@@ -470,7 +470,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       assert(flo*fhi <= 0);
 
-      printf("- %d %d %e %e %e %e\n",ilo,ihi,log_t_union(ilo),log_t_union(ihi),f(log_t_union(ilo)),f(log_t_union(ihi)));
+      // printf("- %d %d %e %e %e %e\n",ilo,ihi,log_t_union(ilo),log_t_union(ihi),f(log_t_union(ilo)),f(log_t_union(ihi)));
 
       while (ihi - ilo > 1) {
         int ip = ilo + (ihi - ilo)/2;
@@ -484,7 +484,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         }
       }
 
-      printf("- %d %d %e %e %e %e\n",ilo,ihi,log_t_union(ilo),log_t_union(ihi),f(log_t_union(ilo)),f(log_t_union(ihi)));
+      // printf("- %d %d %e %e %e %e\n",ilo,ihi,log_t_union(ilo),log_t_union(ihi),f(log_t_union(ilo)),f(log_t_union(ihi)));
 
       assert(ihi - ilo == 1);
 
@@ -494,8 +494,27 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       bool result = root.FalsePosition(RootFunction, lb, ub, lt_fp, 1e-15, false, var, iv, in, iy, wn0, wn1, wy0, wy1, this);
       assert(result);
+      
+      // printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
+      /*
+      Real var_Tinit;
+      if (iv==ECLOGP) {
+        Real p_min_offset = 0.0;
+        var_Tinit = log2_(Pressure(nb, 0.2, Y));
+      } else if (iv==ECLOGE) {
+        var_Tinit = log2_(Energy(nb, 0.2, Y));
+      }
 
-      printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
+      Real var_Tsolve;
+      Real Tsolve = exp2_(lt_fp - log_t_offset);
+      if (iv==ECLOGP) {
+        var_Tsolve = log2_(Pressure(nb, Tsolve, Y));
+      } else if (iv==ECLOGE) {
+        var_Tsolve = log2_(Energy(nb, Tsolve, Y));
+      }
+
+      printf("%d %e %e %e %e %e %e %d\n", iv, var, var_Tsolve, var_Tinit, nb, Y[0], exp2_(lt_fp - log_t_offset), result);
+      */
 
       return exp2_(lt_fp - log_t_offset);
     }
@@ -638,6 +657,31 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return offset_table(table_idx) + it + nt(table_idx)*(in + nni(table_idx)*iv);
     }
 
+    KOKKOS_INLINE_FUNCTION void test_temperature_recovery(Real nb, Real T, Real *Y) const {
+      Real pressure = Pressure(nb, T, Y);
+      Real energy   = Energy(nb, T, Y);
+
+      Real T_p = TemperatureFromP(nb, pressure, Y);
+      Real T_e = TemperatureFromE(nb, energy, Y);
+
+      Real p_new = Pressure(nb, T_p, Y);
+      Real e_new = Energy(nb, T_e, Y);
+
+      Real T_err_p = T_p - T;
+      Real T_err_e = T_e - T;
+
+      Real p_err = p_new - pressure;
+      Real e_err = e_new - energy;
+
+      printf("Temperature recovery test at: nb=%e, T=%e, Ye=%f\n", nb, T, Y[0]);
+      printf("TemperatureFromP: p=%e, T=%e, p(T)=%e\n", pressure, T_p, p_new);
+      printf("abserr(T)=%e, relerr(T)=%e, abserr(p)=%e, relerr(p)=%e\n", T_err_p, T_err_p/T, p_err, p_err/pressure);
+      printf("TemperatureFromE: e=%e, T=%e, e(T)=%e\n", energy, T_e, e_new);
+      printf("abserr(T)=%e, relerr(T)=%e, abserr(e)=%e, relerr(e)=%e\n", T_err_e, T_err_e/T, e_err, e_err/energy);
+
+      return;
+    }
+
     // Minimum enthalpy per baryon
     Real min_h;
 
@@ -677,10 +721,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     DvceArray1D<Real> Pmin;                          // pressure offsets for where pressure<=0
 
     // Sequential table storage. 
-    DvceArray1D<Real> ni, log_ni;                                  // <number density, log number density> for each subtable sequentially
-    DvceArray1D<Real> yi;                                          // fractions for each subtable sequentially
-    DvceArray1D<Real> t, log_t;                                    // <temperature, log temperature> for each subtable sequentially
-    DvceArray1D<Real> table;                                       // data for each subtable sequentially
+    DvceArray1D<Real> ni, log_ni;                                   // <number density, log number density> for each subtable sequentially
+    DvceArray1D<Real> yi;                                           // fractions for each subtable sequentially
+    DvceArray1D<Real> t, log_t;                                     // <temperature, log temperature> for each subtable sequentially
+    DvceArray1D<Real> table;                                        // data for each subtable sequentially
     DvceArray1D<int>  offset_ni, offset_yi, offset_t, offset_table; // offsets for start of each subtables data
 
     DvceArray2D<int> y_weights, n_weights; // weights for calculating ni and yi from nb and Y
@@ -693,7 +737,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     /// The root solver.
     class RootFunctor {
       public:
-        KOKKOS_INLINE_FUNCTION Real operator()(Real lt_o, Real var, int iv, int* in, int* iy, Real *wn0, Real* wn1, Real* wy0, Real* wy1, const EOSMultiTable* pparent) const {
+        KOKKOS_INLINE_FUNCTION Real operator()(const Real lt_o, const Real var, 
+                                               const int iv, const int *in, const int *iy, 
+                                               const Real *wn0, const Real *wn1, const Real *wy0, const Real *wy1, 
+                                               const EOSMultiTable* pparent) const {
           Real var_pt = 0.0;
           Real lt = lt_o - pparent->log_t_offset;
 
@@ -724,11 +771,11 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
           }
 
           if (pparent->use_photons) {
-            if (iv==0) {
+            if (iv==ECLOGP) {
               var_pt += pparent->photonPressureConstant * pow(pparent->exp2_(lt),4);
-            } else if (iv==1) {
+            } else if (iv==ECLOGE) {
               var_pt += pparent->photonEnergyConstant * pow(pparent->exp2_(lt),4);
-            } else if (iv==2) {
+            } else if (iv==ECENTD) {
               var_pt += pparent->photonEntropyConstant * pow(pparent->exp2_(lt),3);
             }
           }
