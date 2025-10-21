@@ -115,9 +115,18 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
       }
 
     }
+    file.close(); // Close header.
+
+    if (n_tables_3D+n_tables_2D > MAX_TABLES) {
+      printf("Number of tables exceeds MAX_TABLES=%d, increase and recompile.\n",MAX_TABLES);
+      abort();
+      return;
+    }
 
     if (err>=0) {
       printf("error reading MultiTable header file: %d\n",err);
+      abort();
+      return;
     } else {
       printf("n_tables_3D:  %d\n",n_tables_3D);
       printf("n_tables_2D:  %d\n",n_tables_2D);
@@ -154,8 +163,6 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
         }
       }
     }
-
-    file.close(); // Close header.
 
     /// Resize all device arrays now we have the info we need
     // <number density, fraction, temperature> samples for each subtable
@@ -266,6 +273,13 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
       printf("Read err: %d\n", err);
     }
   }
+
+
+  Real test_nb = 0.16161616;
+  Real test_T  = 0.22222222;
+  Real* test_Ye = new Real[MAX_SPECIES];
+  test_Ye[0] = 0.0555555555;
+  test_temperature_recovery(test_nb,test_T,test_Ye);
 
   return;
 }
