@@ -60,7 +60,14 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
 
 
   constexpr bool use_ye = tov::UsesYe<TOVEOS>;
-  Real ye_atmo = pin->GetOrAddReal("mhd", "s0_atmosphere", 0.5);
+  // Real ye_atmo = pin->GetOrAddReal("mhd", "s0_atmosphere", 0.5);
+  int n_scalars = pin->GetOrAddReal("mhd", "nscalars", 0);
+  Real yi_atmo[MAX_SPECIES];
+  for (int i=0; i<n_scalars; ++i) {
+    std::stringstream spec_name;
+    spec_name << "s" << i << "_atmosphere";
+    yi_atmo[i] = pin->GetOrAddReal("mhd", spec_name.str(),0.5);
+  }
 
   //auto& u0_ = pmbp->pmhd->u0;
   auto& w0_ = pmbp->pmhd->w0;
@@ -107,7 +114,11 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     Real rho, p, mass, alp, r_schw;
     Real vr = 0.;
     Real p_pert = 0.;
-    Real ye = ye_atmo;
+    // Real ye = ye_atmo;
+    Real yi[MAX_SPECIES];
+    for (int i=0; i<MAX_SPECIES; ++i) {
+      yi[i] = yi_atmo[i];
+    }
     auto &use_ye_ = use_ye;
     if (!isotropic) {
       tov_.GetPrimitivesAtPoint(eos_, r, rho, p, mass, alp);
@@ -118,7 +129,8 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
         p_pert = 2.0*p_pert*(rand_gen.frand() - 0.5);
         rand_pool64.free_state(rand_gen);
         if constexpr (use_ye) {
-          ye = eos_.template GetYeFromRho<tov::LocationTag::Device>(rho);
+          // ye = eos_.template GetYeFromRho<tov::LocationTag::Device>(rho);
+          eos_.template GetYiFromRho<tov::LocationTag::Device>(rho, yi);
         }
       }
     } else {
@@ -131,7 +143,8 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
         p_pert = 2.0*p_pert*(rand_gen.frand() - 0.5);
         rand_pool64.free_state(rand_gen);
         if constexpr (use_ye) {
-          ye = eos_.template GetYeFromRho<tov::LocationTag::Device>(rho);
+          // ye = eos_.template GetYeFromRho<tov::LocationTag::Device>(rho);
+          eos_.template GetYiFromRho<tov::LocationTag::Device>(rho, yi);
         }
       }
     }
@@ -147,7 +160,10 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     auto &nvars = nvars_;
     auto &nscal = nscal_;
     if (use_ye && nscal >= 1) {
-      w0_(m,nvars,k,j,i) = ye;
+      for (int r=0; r<pmbp->pmhd->nscalars; ++r) {
+        w0_(m,nvars+r,k,j,i) = yi[r];
+      }
+      //w0_(m,nvars,k,j,i) = ye;
     }
 
     // Set ADM variables
@@ -384,6 +400,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) {
     SetupTOV<tov::TabulatedEOS>(pin, pmy_mesh_);
   } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_hybrid) {
+    SetupTOV<tov::TabulatedEOS>(pin, pmy_mesh_);
+  } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable) {
     SetupTOV<tov::TabulatedEOS>(pin, pmy_mesh_);
   } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_piecewise_poly) {
     SetupTOV<tov::PiecewisePolytropeEOS>(pin, pmy_mesh_);
