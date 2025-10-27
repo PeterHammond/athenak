@@ -238,8 +238,12 @@ void SetupBNS(ParameterInput *pin, Mesh* pmy_mesh_) {
 
           // If the electron fraction is available, find it in the 1D EOS.
           if constexpr (use_ye) {
+            Real Yi[MAX_SPECIES];
             host_w0(m, IYF, k, j, i) = eos.template
-                                       GetYeFromRho<tov::LocationTag::Host>(rho);
+                                       GetYiFromRho<tov::LocationTag::Host>(rho,Yi);
+            for (int r=0; r<pmbp->pmhd->nscalars; ++r) {
+              host_w0(m, pmbp->pmhd->nmhd+r, k, j, i) = Yi[r];
+            }
           }
 
           // Before we store the velocity, we need to make sure it's physical and
