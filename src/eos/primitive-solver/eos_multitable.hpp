@@ -492,7 +492,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real lb = log_t_union(ilo)+log_t_offset;
       Real ub = log_t_union(ihi)+log_t_offset;
 
-      bool result = root.FalsePosition(RootFunction, lb, ub, lt_fp, 1e-15, false, var, iv, in, iy, wn0, wn1, wy0, wy1, this);
+      bool result = root.FalsePosition(RootFunction, lb, ub, lt_fp, 1e-15, var, iv, in, iy, wn0, wn1, wy0, wy1, this);
       assert(result);
       
       // printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
