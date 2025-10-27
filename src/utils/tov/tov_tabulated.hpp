@@ -168,12 +168,12 @@ class TabulatedEOS {
     m_log_e.template sync<DevExeSpace>();
     if (has_yi) {m_yi.template sync<DevExeSpace>();}
     
-    Real test_rho = 0.161616*mb*unit_nuc.MassDensityConversion(unit_geo);
+    Real test_rho = 0.16161616*mb*unit_nuc.MassDensityConversion(unit_geo);
     Real test_press = GetPFromRho<tov::LocationTag::Device>(test_rho);
     Real test_rho_from_p = GetRhoFromP<tov::LocationTag::Device>(test_press);
 
     printf("1D table test: rho=%e\n",test_rho);
-    printf("PfromRho: p=%e\n",test_press);
+    printf("PfromRho: p(geo)=%e, p(nuc)=%e\n",test_press,test_press*unit_geo.EnergyDensityConversion(unit_nuc));
     printf("RhofromP: rho=%e, abserr=%e, relerr=%e\n",test_rho_from_p,test_rho_from_p-test_rho,(test_rho_from_p-test_rho)/test_rho);
 
 

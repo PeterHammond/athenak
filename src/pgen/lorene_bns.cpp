@@ -261,10 +261,13 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable)) {
             host_w0(m, IPR, k, j, i) = p1Deos->template
               GetPFromRho<tov::LocationTag::Host>(host_w0(m,IDN,k,j,i));
+            Real Yi[MAX_SPECIES];
             if (pmbp->pmhd->nscalars>=1) {
-              Real Ye = p1Deos->template
-                GetYeFromRho<tov::LocationTag::Host>(host_w0(m,IDN,k,j,i));
-              host_w0(m, IYF, k, j, i) = Ye;
+              p1Deos->template
+                GetYiFromRho<tov::LocationTag::Host>(host_w0(m,IDN,k,j,i),Yi);
+              for (int r=0; r<pmbp->pmhd->nscalars; ++r) {
+                host_w0(m, pmbp->pmhd->nmhd+r, k, j, i) = Yi[r];
+              }
             }
           }
 
@@ -319,8 +322,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // EOS because we pull the energy straight from the cold EOS.
   // TODO(JMF): This can be refactored to be EOS generic such that we no longer rely on
   // Lorene's epsilon for any EOS.
-  if ((pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) || 
-      (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable)) {
+  if ((pmbp->pdyngr->eos_policy != DynGRMHD_EOS::eos_compose) && 
+      (pmbp->pdyngr->eos_policy != DynGRMHD_EOS::eos_multitable)) {
     pmbp->pdyngr->ConvertInternalEnergyToPressure(0, (ncells1-1),
                                                   0, (ncells2-1), 0, (ncells3-1));
   }
