@@ -245,16 +245,20 @@ void SetupBNS(ParameterInput *pin, Mesh* pmy_mesh_) {
       vu[2] = 0.0;
     }
 
-    host_w0(m, IPR, k, j, i) = eos.template
-                                GetPFromRho<tov::LocationTag::Host>(rho);
+          host_w0(m, IPR, k, j, i) = eos.template
+                                     GetPFromRho<tov::LocationTag::Host>(rho);
 
-    // If the electron fraction is available, find it in the 1D EOS.
-    if constexpr (use_ye) {
-      if (read_ye) {
-        host_w0(m, IYF, k, j, i) = eos.template
-                                    GetYeFromRho<tov::LocationTag::Host>(rho);
-      }
-    }
+          // If the electron fraction is available, find it in the 1D EOS.
+          if constexpr (use_ye) {
+            if (read_ye) {
+              Real Yi[MAX_SPECIES];
+              host_w0(m, IYF, k, j, i) = eos.template
+                                       GetYiFromRho<tov::LocationTag::Host>(rho,Yi);
+              for (int r=0; r<pmbp->pmhd->nscalars; ++r) {
+                host_w0(m, pmbp->pmhd->nmhd+r, k, j, i) = Yi[r];
+              }
+            }
+          }
 
     // Before we store the velocity, we need to make sure it's physical and
     // calculate the Lorentz factor. If the velocity is superluminal, we make a
