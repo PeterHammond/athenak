@@ -480,6 +480,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     SetupBNS<tov::PolytropeEOS>(pin, pmy_mesh_);
   } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_compose) {
     SetupBNS<tov::TabulatedEOS>(pin, pmy_mesh_);
+  } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_multitable) {
+    SetupBNS<tov::TabulatedEOS>(pin, pmy_mesh_);
   } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_hybrid) {
     SetupBNS<tov::TabulatedEOS>(pin, pmy_mesh_);
   } else if (pmbp->pdyngr->eos_policy == DynGRMHD_EOS::eos_piecewise_poly) {
