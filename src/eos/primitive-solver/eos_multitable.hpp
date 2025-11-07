@@ -277,9 +277,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     KOKKOS_INLINE_FUNCTION Real TemperatureFromE(Real nb, Real e, Real *Y) const {
       assert (initialised);
       Real e_min = MinimumEnergy(nb, Y);
+      Real e_max = MaximumEnergy(nb, Y);
       if (e <= e_min) {
         e = e_min;
         return min_T;
+      } else if (e >= e_max) {
+        return max_T;
       } else {
         Real log_e = log2_(e);
         return TemperatureFromVar(ECLOGE, log_e, nb, Y);
@@ -290,9 +293,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     KOKKOS_INLINE_FUNCTION Real TemperatureFromP(Real nb, Real p, Real *Y) const {
       assert (initialised);
       Real p_min = MinimumPressure(nb, Y);
+      Real p_max = MaximumPressure(nb, Y);
       if (p <= p_min) {
         p = p_min;
         return min_T;
+      } else if (p >= p_max) {
+        return max_T;
       } else {
         Real p_target = p;
         
@@ -448,19 +454,24 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real flo = f(lt_lo);
       Real fhi = f(lt_hi);
       
-      // Real var_lo, var_hi;
-      //if (iv==0) {
-      //  var_lo = log2_(Pressure(nb, t_union(ilo), Y));
-      //  var_hi = log2_(Pressure(nb, t_union(ihi), Y));
-      //} else if (iv==1) {
-      //  var_lo = log2_(Energy(nb, t_union(ilo), Y));
-      //  var_hi = log2_(Energy(nb, t_union(ihi), Y));
-      //}
+      /*
+      Real var_lo, var_hi;
+      if (iv==0) {
+        var_lo = log2_(Pressure(nb, t_union(ilo), Y));
+        var_hi = log2_(Pressure(nb, t_union(ihi), Y));
+      } else if (iv==1) {
+        var_lo = log2_(Energy(nb, t_union(ilo), Y));
+        var_hi = log2_(Energy(nb, t_union(ihi), Y));
+      }
 
-      // printf("%d %e %e %e %e %e %d %d %e %e %e %e\n",iv,var,var_lo,var_hi,nb,Y[0],ilo,ihi,lt_lo,lt_hi,flo,fhi);
+      printf("%d %e %e %e %e %e %d %d %e %e %e %e\n",iv,var,var_lo,var_hi,nb,Y[0],ilo,ihi,lt_lo,lt_hi,flo,fhi);
+      */
 
       while (flo*fhi>0){
         if (ilo == ihi - 1) {
+          // if (abs(fhi) < abs(flo)) {
+          //   return exp2_(lt_hi);
+          // }
           break;
         } else {
           ilo += 1;
@@ -526,6 +537,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       GetPartialYi(table_idx, Y, Yi);
       yi = Yi/Ni;
       ni = Ni*nb;
+      // yi = Kokkos::max(Kokkos::min(yi,this->yi(offset_yi(table_idx)+nyi(table_idx)-1)),this->yi(offset_yi(table_idx)));
+      // ni = Kokkos::max(Kokkos::min(ni,this->ni(offset_ni(table_idx)+nni(table_idx)-1)),this->ni(offset_ni(table_idx)));
       return;
     }
 
@@ -533,6 +546,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real Ni;
       GetPartialNi(table_idx, Y,Ni);
       ni = Ni*nb;
+      // ni = Kokkos::max(Kokkos::min(ni,this->ni(offset_ni(table_idx)+nni(table_idx)-1)),this->ni(offset_ni(table_idx)));
       return;
     }
 
