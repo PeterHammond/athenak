@@ -52,7 +52,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
     Kokkos::realloc(m_log_nb, m_nn);
     Kokkos::realloc(m_yq,     m_ny);
     Kokkos::realloc(m_log_t,  m_nt);
-    Kokkos::realloc(m_table, ECNVARS, m_nn, m_ny, m_nt);
+    Kokkos::realloc(m_table, ECNVARS, m_nt, m_nn, m_ny);
 
     // Create host storage to read into
     HostArray1D<Real>::HostMirror host_log_nb = create_mirror_view(m_log_nb);
@@ -105,7 +105,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
           for (size_t it=0; it<m_nt; ++it) {
             size_t iflat = it + m_nt*(iy + m_ny*in);
             Real p_current = table_Q1[iflat]*exp2_(host_log_nb(in));
-            host_table(ECLOGP,in,iy,it) = log2_(p_current);
+            host_table(ECLOGP,it,in,iy) = log2_(p_current);
           }
         }
       }
@@ -117,7 +117,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
         for (size_t iy=0; iy<m_ny; ++iy) {
           for (size_t it=0; it<m_nt; ++it) {
             size_t iflat = it + m_nt*(iy + m_ny*in);
-            host_table(ECENT,in,iy,it) = table_Q2[iflat];
+            host_table(ECENT,it,in,iy) = table_Q2[iflat];
           }
         }
       }
@@ -129,7 +129,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
         for (size_t iy=0; iy<m_ny; ++iy) {
           for (size_t it=0; it<m_nt; ++it) {
             size_t iflat = it + m_nt*(iy + m_ny*in);
-            host_table(ECMUB,in,iy,it) = (table_Q3[iflat]+1)*mb;
+            host_table(ECMUB,it,in,iy) = (table_Q3[iflat]+1)*mb;
           }
         }
       }
@@ -141,7 +141,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
         for (size_t iy=0; iy<m_ny; ++iy) {
           for (size_t it=0; it<m_nt; ++it) {
             size_t iflat = it + m_nt*(iy + m_ny*in);
-            host_table(ECMUQ,in,iy,it) = table_Q4[iflat]*mb;
+            host_table(ECMUQ,it,in,iy) = table_Q4[iflat]*mb;
           }
         }
       }
@@ -153,7 +153,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
         for (size_t iy=0; iy<m_ny; ++iy) {
           for (size_t it=0; it<m_nt; ++it) {
             size_t iflat = it + m_nt*(iy + m_ny*in);
-            host_table(ECMUL,in,iy,it) = table_Q5[iflat]*mb;
+            host_table(ECMUL,it,in,iy) = table_Q5[iflat]*mb;
           }
         }
       }
@@ -166,7 +166,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
           for (size_t it=0; it<m_nt; ++it) {
             size_t iflat = it + m_nt*(iy + m_ny*in);
             Real e_current = mb*(table_Q7[iflat] + 1)*exp2_(host_log_nb(in));
-            host_table(ECLOGE,in,iy,it) = log2_(e_current);
+            host_table(ECLOGE,it,in,iy) = log2_(e_current);
           }
         }
       }
@@ -178,7 +178,7 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
         for (size_t iy=0; iy<m_ny; ++iy) {
           for (size_t it=0; it<m_nt; ++it) {
             size_t iflat = it + m_nt*(iy + m_ny*in);
-            host_table(ECCS,in,iy,it) = sqrt(table_cs2[iflat]);
+            host_table(ECCS,it,in,iy) = sqrt(table_cs2[iflat]);
           }
         }
       }
@@ -194,14 +194,14 @@ void EOSCompOSE<LogPolicy>::ReadTableFromFile(std::string fname) {
 
     m_min_h = std::numeric_limits<Real>::max();
     // Compute minimum enthalpy
-    for (int in = 0; in < m_nn; ++in) {
-      Real const nb = exp2_(host_log_nb(in));
-      for (int iy = 0; iy < m_ny; ++iy) {
-        for (int it = 0; it < m_nt; ++it) {
+    for (int it = 0; it < m_nt; ++it) {
+      for (int in = 0; in < m_nn; ++in) {
+        Real const nb = exp2_(host_log_nb(in));
+        for (int iy = 0; iy < m_ny; ++iy) {
           // This would use GPU memory, and we are currently on the CPU, so Enthalpy is
           // hardcoded
-          Real e = exp2_(host_table(ECLOGE,in,iy,it));
-          Real p = exp2_(host_table(ECLOGP,in,iy,it));
+          Real e = exp2_(host_table(ECLOGE,it,in,iy));
+          Real p = exp2_(host_table(ECLOGP,it,in,iy));
           Real h = (e + p) / nb;
           m_min_h = fmin(m_min_h, h);
         }
