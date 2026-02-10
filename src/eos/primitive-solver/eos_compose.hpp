@@ -407,13 +407,14 @@ class EOSCompOSE : public EOSPolicyInterface, public LogPolicy, public SupportsE
     Real log_n = log2_(n);
     weight_idx_ln(&wn0, &wn1, &in, log_n);
     weight_idx_yq(&wy0, &wy1, &iy, Yq);
+    Real weights[4] = {wn0*wy0,wn0*wy1,wn1*wy0,wn1*wy1};
 
     auto f = [=](int it){
       Real var_pt =
-        wn0 * (wy0 * m_table(iv, in+0, iy+0, it)  +
-               wy1 * m_table(iv, in+0, iy+1, it)) +
-        wn1 * (wy0 * m_table(iv, in+1, iy+0, it)  +
-               wy1 * m_table(iv, in+1, iy+1, it));
+        weights[0] * m_table(iv, in+0, iy+0, it)  +
+        weights[1] * m_table(iv, in+0, iy+1, it) +
+        weights[2] * m_table(iv, in+1, iy+0, it)  +
+        weights[3] * m_table(iv, in+1, iy+1, it);
 
       return var - var_pt;
     };
