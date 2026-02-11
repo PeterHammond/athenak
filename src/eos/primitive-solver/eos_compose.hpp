@@ -411,9 +411,9 @@ class EOSCompOSE : public EOSPolicyInterface, public LogPolicy, public SupportsE
 
     auto f = [=](int it){
       Real var_pt =
-        weights[0] * m_table(iv, it, in  , iy  )  +
+        weights[0] * m_table(iv, it, in  , iy  ) +
         weights[1] * m_table(iv, it, in  , iy+1) +
-        weights[2] * m_table(iv, it, in+1, iy  )  +
+        weights[2] * m_table(iv, it, in+1, iy  ) +
         weights[3] * m_table(iv, it, in+1, iy+1);
 
       return var - var_pt;
