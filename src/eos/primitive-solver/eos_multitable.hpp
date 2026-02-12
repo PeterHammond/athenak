@@ -677,6 +677,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return offset_table(table_idx) + it + nt(table_idx)*(in + nni(table_idx)*iv);
     }
 
+    /*
     KOKKOS_INLINE_FUNCTION void test_temperature_recovery(Real nb, Real T, Real *Y) const {
       Real pressure = Pressure(nb, T, Y);
       Real energy   = Energy(nb, T, Y);
@@ -701,6 +702,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       return;
     }
+    */
 
     // Minimum enthalpy per baryon
     Real min_h;

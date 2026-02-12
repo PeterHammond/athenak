@@ -281,13 +281,14 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     }
   }
 
-
+  /*
   Real test_nb = 0.16161616;
   Real test_T  = 0.22222222;
   Real* test_Ye = new Real[MAX_SPECIES];
   test_Ye[0] = 0.0555555555;
   test_temperature_recovery(test_nb,test_T,test_Ye);
-
+  */
+ 
   return;
 }
 
