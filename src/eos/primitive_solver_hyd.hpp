@@ -147,8 +147,9 @@ class PrimitiveSolverHydro {
       }
 
       // Get table filename, then read the table,
-      std::string fname = pin->GetString(block, "table");
-      ps.GetEOSMutable().ReadTableFromFile(fname);
+      std::string mt_dir = pin->GetString(block, "multitable_directory");
+      std::string mt_header = pin->GetString(block, "multitable_header");
+      ps.GetEOSMutable().ReadTableFromFile(mt_dir,mt_header);
 
       // Set whether the EoS should add photons
       bool use_photons = pin->GetOrAddBoolean(block, "use_photons", false);

@@ -48,7 +48,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     };
 
     /// Read the table files.
-    void ReadTableFromFile(std::string fname);
+    void ReadTableFromFile(std::string dname, std::string fname);
     
     /// Check if the EOS has been initialized properly.
     KOKKOS_INLINE_FUNCTION bool IsInitialized() const {

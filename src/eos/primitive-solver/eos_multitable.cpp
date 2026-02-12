@@ -26,12 +26,12 @@
 namespace Primitive {
 
 template<typename LogPolicy>
-void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
+void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string fname) {
   if (initialised==false) {
 
     std::ifstream file;
     try {
-      file.open(fname.c_str(), std::ifstream::in);
+      file.open((dname+fname).c_str(), std::ifstream::in);
     } catch (std::ifstream::failure& e) {
       return;
     }
@@ -41,7 +41,7 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
     }
 
     // TODO LOOP Read header file
-    printf("Reading MultiTable header file: %s\n", fname.c_str());
+    printf("Reading MultiTable header file: %s\n", (dname+fname).c_str());
     std::string line, name, value, comment;
     int nline = -1;
     int err = -1;
@@ -89,9 +89,9 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string fname) {
         max_Y[(nline - 1 - min_Y_start)/2] = std::stod(value); 
         continue;
       }
-      if (name.compare(0,9,"table_3D_") == 0) {fnames_3D.push_back(value); continue;}
-      if (name.compare(0,9,"table_2D_") == 0) {fnames_2D.push_back(value); continue;}
-      if (name.compare(0,7,"T_union") == 0) {T_union_fname = value; continue;}
+      if (name.compare(0,9,"table_3D_") == 0) {fnames_3D.push_back(dname+value); continue;}
+      if (name.compare(0,9,"table_2D_") == 0) {fnames_2D.push_back(dname+value); continue;}
+      if (name.compare(0,7,"T_union") == 0) {T_union_fname = dname+value; continue;}
       if (name.compare(0,4,"wY_(") == 0) {
         if (y_weights_start == -1) {
           y_weights_start = nline;
