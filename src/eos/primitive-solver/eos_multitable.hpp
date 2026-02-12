@@ -65,9 +65,15 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
+    KOKKOS_INLINE_FUNCTION void SetUsePhotons(bool photons) {
+      use_photons = photons;
+      return;
+    }
+
     /// Set the EOS unit system.
     KOKKOS_INLINE_FUNCTION void SetEOSUnitSystem(UnitSystem units) {
       eos_units = units;
+      return;
     }
 
   protected:
@@ -85,7 +91,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         t_union("T",1), log_t_union("T",1) {
 
       initialised = false;
-      use_photons = true;
+      use_photons = false;
 
       n_tables_2D  = 0;
       n_tables_3D  = 0;
