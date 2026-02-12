@@ -254,20 +254,27 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     if (err<0) {
       initialised = true;
 
+      // Create some host copies to output some useful information
+      HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni), host_offset_yi = create_mirror_view(offset_yi), host_offset_t = create_mirror_view(offset_t), host_offset_table = create_mirror_view(offset_table);
+      Kokkos::deep_copy(host_offset_ni, offset_ni);
+      Kokkos::deep_copy(host_offset_yi, offset_yi);
+      Kokkos::deep_copy(host_offset_t, offset_t);
+      Kokkos::deep_copy(host_offset_table, offset_table);
+
       for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
-        printf("ni offset %d: %d\n",idx,offset_ni(idx));
+        printf("ni offset %d: %d\n",idx,host_offset_ni(idx));
       }
 
       for (int idx=0; idx<n_tables_3D; ++idx) {
-        printf("yi offset %d: %d\n",idx,offset_yi(idx));
+        printf("yi offset %d: %d\n",idx,host_offset_yi(idx));
       }
 
       for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
-        printf("t offset %d: %d\n",idx,offset_t(idx));
+        printf("t offset %d: %d\n",idx,host_offset_t(idx));
       }
 
       for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
-        printf("table offset %d: %d\n",idx,offset_table(idx));
+        printf("table offset %d: %d\n",idx,host_offset_table(idx));
       }
     } else {
       printf("Read err: %d\n", err);
