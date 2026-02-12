@@ -438,9 +438,9 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
     }
 
     if (Pmin_read<0.0) {
-      Pmin(table_idx) = -Pmin_read * (1.0 + Pmin_fac);
+      host_Pmin(table_idx) = -Pmin_read * (1.0 + Pmin_fac);
     } else {
-      Pmin(table_idx) = 0.0;
+      host_Pmin(table_idx) = 0.0;
     }
 
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
@@ -449,7 +449,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
           size_t idx_flat_input = idx_t + host_nt(table_idx)*(idx_yi + host_nyi(table_idx)*idx_ni);
           size_t idx_flat_table = host_offset_table(table_idx) + idx_t + host_nt(table_idx)*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECLOGP));
           Real p_current = table_press[idx_flat_input];
-          host_table(idx_flat_table) = log2_(p_current + Pmin(table_idx));
+          host_table(idx_flat_table) = log2_(p_current + host_Pmin(table_idx));
         }
       }
     }
@@ -664,9 +664,9 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     }
 
     if (Pmin_read<0.0) {
-      Pmin(table_idx) = -Pmin_read * (1.0 + Pmin_fac);
+      host_Pmin(table_idx) = -Pmin_read * (1.0 + Pmin_fac);
     } else {
-      Pmin(table_idx) = 0.0;
+      host_Pmin(table_idx) = 0.0;
     }
 
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
@@ -674,7 +674,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
         size_t idx_flat_input = idx_t + host_nt(table_idx)*idx_ni;
         size_t idx_flat_table = host_offset_table(table_idx) + idx_t + host_nt(table_idx)*(idx_ni + host_nni(table_idx)*ECLOGP);
         Real p_current = table_press[idx_flat_input];
-        host_table(idx_flat_table) = log2_(p_current + Pmin(table_idx));
+        host_table(idx_flat_table) = log2_(p_current + host_Pmin(table_idx));
       }
     }
   }
