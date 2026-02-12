@@ -128,7 +128,7 @@ class PrimitiveSolverHydro {
     if constexpr (
          std::is_same_v<Primitive::EOSMultiTable<Primitive::NormalLogs>, EOSPolicy> || 
          std::is_same_v<Primitive::EOSMultiTable<Primitive::NQTLogs>, EOSPolicy>) {
-      // Get and set number of scalars in table. This will currently fail if not 1.
+      // Get and set number of scalars in table.
       ps.GetEOSMutable().SetNSpecies(pin->GetOrAddInteger(block, "nscalars", 1));
       std::string units = pin->GetOrAddString(block, "units", "geometric_solar");
       if (!units.compare("geometric_solar")) {
@@ -149,6 +149,10 @@ class PrimitiveSolverHydro {
       // Get table filename, then read the table,
       std::string fname = pin->GetString(block, "table");
       ps.GetEOSMutable().ReadTableFromFile(fname);
+
+      // Set whether the EoS should add photons
+      bool use_photons = pin->GetOrAddBoolean(block, "use_photons", false);
+      ps.GetEOSMutable().SetUsePhotons(use_photons);
 
       // Ensure table was read properly
       assert(ps.GetEOSMutable().IsInitialized());
