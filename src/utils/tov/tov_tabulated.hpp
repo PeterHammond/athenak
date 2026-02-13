@@ -243,21 +243,14 @@ class TabulatedEOS {
 
     int lb = static_cast<int>((lrho-lrho_min)/dlrho);
     int ub = lb + 1;
+    auto& lrho_view = GetView<loc>(m_log_rho);
+    auto& yi_view = GetView2D<loc>(m_yi);
     
-    if constexpr (loc == LocationTag::Host) {
-      for (int i=0; i<n_species; ++i) {
-        Y[i] = Interpolate(lrho, m_log_rho.h_view(lb), m_log_rho.h_view(ub),
-                           m_yi.h_view(lb,i), m_yi.h_view(ub,i)); 
-      }
-      return; 
-
-      } else {
-      for (int i=0; i<n_species; ++i) {
-        Y[i] = Interpolate(lrho, m_log_rho.d_view(lb), m_log_rho.d_view(ub),
-                           m_yi.d_view(lb,i), m_yi.d_view(ub,i));
-      }
-      return;
+    for (int i=0; i<n_species; ++i) {
+      Y[i] = Interpolate(lrho, lrho_view(lb), lrho_view(ub),
+                          yi_view(lb,i), yi_view(ub,i)); 
     }
+    return;
   }
 
   template<LocationTag loc>
@@ -275,6 +268,16 @@ class TabulatedEOS {
   template<LocationTag loc>
   KOKKOS_INLINE_FUNCTION
   auto& GetView(const DualArray1D<Real>& arr) const {
+    if constexpr (loc == LocationTag::Host) {
+      return arr.h_view;
+    } else {
+      return arr.d_view;
+    }
+  }  
+  
+  template<LocationTag loc>
+  KOKKOS_INLINE_FUNCTION
+  auto& GetView2D(const DualArray2D<Real>& arr) const {
     if constexpr (loc == LocationTag::Host) {
       return arr.h_view;
     } else {
