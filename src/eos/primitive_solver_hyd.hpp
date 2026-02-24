@@ -268,6 +268,7 @@ class PrimitiveSolverHydro {
     int &nmb = pmy_pack->nmb_thispack;
 
     Real mb = eos_.GetBaryonMass();
+    std::cout<<"m,k,j,i,prim(p):"<<3<<", "<<8<<", "<<47<<", "<<13<<", "<<prim(3, IPR, 8, 47, 13)<<std::endl;
 
 
     par_for("pshyd_prim2cons", DevExeSpace(), 0, (nmb-1), kl, ku, jl, ju, il, iu,
@@ -303,13 +304,36 @@ class PrimitiveSolverHydro {
       //prim_pt[PTM] = eos_.GetTemperatureFromE(prim_pt[PRH], e, &prim_pt[PYF]);
       //prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
       prim_pt[PPR] = prim(m, IPR, k, j, i);
+      if (m==3 && k==8 && j==47 && i==13) {
+        std::cout<<"prim_pt: "<<prim_pt[0];
+        for (int r=1; r<PYF+nscal; ++r) {
+          std::cout<<", "<<prim_pt[r];
+        }
+        std::cout<<std::endl;
+      }
 
       // Apply the floor to make sure these values are physical.
       prim_pt[PTM] = eos_.GetTemperatureFromP(prim_pt[PRH], prim_pt[PPR], &prim_pt[PYF]);
       bool floor = eos_.ApplyPrimitiveFloor(prim_pt[PRH], &prim_pt[PVX],
                                            prim_pt[PPR], prim_pt[PTM], &prim_pt[PYF]);
+      
+      if (m==3 && k==8 && j==47 && i==13) {
+        std::cout<<"prim_pt: "<<prim_pt[0];
+        for (int r=1; r<PYF+nscal; ++r) {
+          std::cout<<", "<<prim_pt[r];
+        }
+        std::cout<<std::endl;
+      }
 
       ps_.PrimToCon(prim_pt, cons_pt, b, g3d);
+
+      if (m==3 && k==8 && j==47 && i==13) {
+        std::cout<<"prim_pt: "<<prim_pt[0];
+        for (int r=1; r<PYF+nscal; ++r) {
+          std::cout<<", "<<prim_pt[r];
+        }
+        std::cout<<std::endl;
+      }
 
       // Check for NaNs
       if (CheckForConservedNaNs(cons_pt)) {
