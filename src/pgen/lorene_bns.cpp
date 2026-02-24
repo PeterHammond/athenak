@@ -276,7 +276,7 @@ void SetupBNS(ParameterInput *pin, Mesh* pmy_mesh_) {
   }
 
   // m,k,j,i,p:3, 8, 47, 13, 1.167811990921e-05
-  std::cout<<"m,k,j,i,host_w0(p):"<<3<<", "<<8<<", "<<47<<", "<<13<<", "<<host_w0(3, IPR, 8, 47, 13)<<std::endl;
+  std::cout<<"m,k,j,i,host_w0(p): 3, 8, 47, 13, "<<host_w0(3, IPR, 8, 47, 13)<<std::endl;
 
   if (global_variable::my_rank == 0) {
     std::cout << "Host mirrors filled." << std::endl;
@@ -300,7 +300,6 @@ void SetupBNS(ParameterInput *pin, Mesh* pmy_mesh_) {
   if (pmbp->pz4c != nullptr) {
     Kokkos::deep_copy(pmbp->pz4c->u0, host_u_z4c);
   }
-  std::cout<<"m,k,j,i,w0(p):"<<3<<", "<<8<<", "<<47<<", "<<13<<", "<<w0(3, IPR, 8, 47, 13)<<std::endl;
 
   if (global_variable::my_rank == 0) {
     std::cout << "Data copied." << std::endl;
