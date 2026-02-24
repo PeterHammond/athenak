@@ -231,9 +231,11 @@ void SetupBNS(ParameterInput *pin, Mesh* pmy_mesh_) {
             vu[0] = 0.0;
             vu[1] = 0.0;
             vu[2] = 0.0;
-            for (int r=0; r<pmbp->pmhd->nscalars; ++r) {
-              // Set scalars to atmo
-              host_w0(m, pmbp->pmhd->nmhd+r, k, j, i) = eos.template GetYiFromRho<tov::LocationTag::Host>(rho,r);
+            if constexpr (use_ye) {
+              for (int r=0; r<pmbp->pmhd->nscalars; ++r) {
+                // Set scalars to atmo
+                host_w0(m, pmbp->pmhd->nmhd+r, k, j, i) = eos.template GetYiFromRho<tov::LocationTag::Host>(rho,r);
+              }
             }
           } else {
             host_w0(m, IPR, k, j, i) = eos.template
