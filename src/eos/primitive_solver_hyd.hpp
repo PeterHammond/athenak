@@ -268,7 +268,7 @@ class PrimitiveSolverHydro {
     int &nmb = pmy_pack->nmb_thispack;
 
     Real mb = eos_.GetBaryonMass();
-    std::cout<<"m,k,j,i,prim(p):"<<3<<", "<<8<<", "<<47<<", "<<13<<", "<<prim(3, IPR, 8, 47, 13)<<std::endl;
+    Kokkos::printf("Pressure in prim at (3, 8, 47, 13): %e\n", prim(3, IPR, 8, 47, 13));
 
 
     par_for("pshyd_prim2cons", DevExeSpace(), 0, (nmb-1), kl, ku, jl, ju, il, iu,
