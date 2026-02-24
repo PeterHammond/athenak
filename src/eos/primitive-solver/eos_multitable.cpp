@@ -362,6 +362,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(host_yi, yi);
   Kokkos::deep_copy(host_t, t);
   Kokkos::deep_copy(host_log_t, log_t);
+  Kokkos::deep_copy(host_table, table);
 
   // Read subtable
   TableReader::Table subtable;
@@ -576,6 +577,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(yi, host_yi);
   Kokkos::deep_copy(t,     host_t);
   Kokkos::deep_copy(log_t, host_log_t);
+  Kokkos::deep_copy(table, host_table);
 
   return success;
 }
@@ -605,6 +607,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(host_log_ni, log_ni);
   Kokkos::deep_copy(host_t, t);
   Kokkos::deep_copy(host_log_t, log_t);
+  Kokkos::deep_copy(host_table, table);
 
   // Read subtable
   TableReader::Table subtable;
@@ -784,6 +787,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(log_ni, host_log_ni);
   Kokkos::deep_copy(t,     host_t);
   Kokkos::deep_copy(log_t, host_log_t);
+  Kokkos::deep_copy(table, host_table);
   return success;
 }
 
