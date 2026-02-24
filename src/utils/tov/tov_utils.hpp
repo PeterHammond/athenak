@@ -43,7 +43,7 @@ constexpr bool UsesYe<
   TOVEOS,
   std::void_t<
     decltype(std::declval<TOVEOS>().
-             template GetYiFromRho<LocationTag::Host>(std::declval<Real>(),std::declval<Real*>()))
+             template GetYiFromRho<LocationTag::Host>(std::declval<Real>(),std::declval<int>()))
   >
 > = true;
 
