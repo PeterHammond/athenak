@@ -301,9 +301,22 @@ class PrimitiveSolverHydro {
       //Real e = prim(m, IDN, k, j, i) + prim(m, IEN, k, j, i);
       //prim_pt[PTM] = eos_.GetTemperatureFromE(prim_pt[PRH], e, &prim_pt[PYF]);
       //prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
+
+      if (m==35 && k==8 && j==47 && i==13) {
+        Kokkos::printf("prim_pt with Tmin\n");
+        prim_pt[PTM] = eos_.GetMinimumTemperature();
+        prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
+        DumpPrimitiveVars(prim_pt);
+
+        Kokkos::printf("prim_pt with Tmax\n");
+        prim_pt[PTM] = eos_.GetMaximumTemperature();
+        prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
+        DumpPrimitiveVars(prim_pt);
+      }
+
       prim_pt[PPR] = prim(m, IPR, k, j, i);
       if (m==35 && k==8 && j==47 && i==13) {
-        Kokkos::printf("prim_pt after load");
+        Kokkos::printf("prim_pt after load\n");
         DumpPrimitiveVars(prim_pt);
       }
 
@@ -313,14 +326,14 @@ class PrimitiveSolverHydro {
                                            prim_pt[PPR], prim_pt[PTM], &prim_pt[PYF]);
       
       if (m==35 && k==8 && j==47 && i==13) {
-        Kokkos::printf("prim_pt after GetTemperatureFromP");
+        Kokkos::printf("prim_pt after GetTemperatureFromP\n");
         DumpPrimitiveVars(prim_pt);
       }
 
       ps_.PrimToCon(prim_pt, cons_pt, b, g3d);
 
       if (m==35 && k==8 && j==47 && i==13) {
-        Kokkos::printf("prim_pt after PrimToCon");
+        Kokkos::printf("prim_pt after PrimToCon\n");
         DumpPrimitiveVars(prim_pt);
       }
 
