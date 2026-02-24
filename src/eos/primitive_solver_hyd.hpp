@@ -302,7 +302,7 @@ class PrimitiveSolverHydro {
       //prim_pt[PTM] = eos_.GetTemperatureFromE(prim_pt[PRH], e, &prim_pt[PYF]);
       //prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
       prim_pt[PPR] = prim(m, IPR, k, j, i);
-      if (m==3 && k==8 && j==47 && i==13 && global_variable::my_rank == 0) {
+      if (m==3 && k==8 && j==47 && i==13) {
         Kokkos::printf("prim_pt after load");
         DumpPrimitiveVars(prim_pt);
       }
@@ -312,14 +312,14 @@ class PrimitiveSolverHydro {
       bool floor = eos_.ApplyPrimitiveFloor(prim_pt[PRH], &prim_pt[PVX],
                                            prim_pt[PPR], prim_pt[PTM], &prim_pt[PYF]);
       
-      if (m==3 && k==8 && j==47 && i==13 && global_variable::my_rank == 0) {
+      if (m==3 && k==8 && j==47 && i==13) {
         Kokkos::printf("prim_pt after GetTemperatureFromP");
         DumpPrimitiveVars(prim_pt);
       }
 
       ps_.PrimToCon(prim_pt, cons_pt, b, g3d);
 
-      if (m==3 && k==8 && j==47 && i==13 && global_variable::my_rank == 0) {
+      if (m==3 && k==8 && j==47 && i==13) {
         Kokkos::printf("prim_pt after PrimToCon");
         DumpPrimitiveVars(prim_pt);
       }
