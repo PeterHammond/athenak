@@ -116,8 +116,8 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     Real p_pert = 0.;
     // Real ye = ye_atmo;
     Real yi[MAX_SPECIES];
-    for (int i=0; i<MAX_SPECIES; ++i) {
-      yi[i] = yi_atmo[i];
+    for (int r=0; r<MAX_SPECIES; ++r) {
+      yi[r] = yi_atmo[r];
     }
     auto &use_ye_ = use_ye;
     if (!isotropic) {
@@ -130,7 +130,9 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
         rand_pool64.free_state(rand_gen);
         if constexpr (use_ye) {
           // ye = eos_.template GetYeFromRho<tov::LocationTag::Device>(rho);
-          eos_.template GetYiFromRho<tov::LocationTag::Device>(rho, yi);
+          for (int r=0; r<nscal_; ++r) {
+            yi[r] = eos_.template GetYiFromRho<tov::LocationTag::Device>(rho, r);
+          }
         }
       }
     } else {
@@ -144,7 +146,9 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
         rand_pool64.free_state(rand_gen);
         if constexpr (use_ye) {
           // ye = eos_.template GetYeFromRho<tov::LocationTag::Device>(rho);
-          eos_.template GetYiFromRho<tov::LocationTag::Device>(rho, yi);
+          for (int r=0; r<nscal_; ++r) {
+            yi[r] = eos_.template GetYiFromRho<tov::LocationTag::Device>(rho, r);
+          }
         }
       }
     }

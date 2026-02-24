@@ -231,14 +231,11 @@ class TabulatedEOS {
 
   template<LocationTag loc>
   KOKKOS_INLINE_FUNCTION
-  void GetYiFromRho(Real rho, Real Y[MAX_SPECIES]) const {
+  Real GetYiFromRho(Real rho, int i) const {
     Real lrho = log(rho);
     
     if (lrho < lrho_min || !has_yi) {
-      for (int i=0; i<n_species; ++i) {
-        Y[i] = yi_atmosphere[i];
-      }
-      return;
+      return yi_atmosphere[i];
     }
 
     int lb = static_cast<int>((lrho-lrho_min)/dlrho);
@@ -246,11 +243,8 @@ class TabulatedEOS {
     auto& lrho_view = GetView<loc>(m_log_rho);
     auto& yi_view = GetView2D<loc>(m_yi);
     
-    for (int i=0; i<n_species; ++i) {
-      Y[i] = Interpolate(lrho, lrho_view(lb), lrho_view(ub),
+    return Interpolate(lrho, lrho_view(lb), lrho_view(ub),
                           yi_view(lb,i), yi_view(ub,i)); 
-    }
-    return;
   }
 
   template<LocationTag loc>
