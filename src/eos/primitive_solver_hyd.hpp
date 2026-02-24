@@ -305,11 +305,7 @@ class PrimitiveSolverHydro {
       //prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
       prim_pt[PPR] = prim(m, IPR, k, j, i);
       if (m==3 && k==8 && j==47 && i==13) {
-        std::cout<<"prim_pt: "<<prim_pt[0];
-        for (int r=1; r<PYF+nscal; ++r) {
-          std::cout<<", "<<prim_pt[r];
-        }
-        std::cout<<std::endl;
+        DumpPrimitiveVars(prim_pt);
       }
 
       // Apply the floor to make sure these values are physical.
@@ -318,21 +314,13 @@ class PrimitiveSolverHydro {
                                            prim_pt[PPR], prim_pt[PTM], &prim_pt[PYF]);
       
       if (m==3 && k==8 && j==47 && i==13) {
-        std::cout<<"prim_pt: "<<prim_pt[0];
-        for (int r=1; r<PYF+nscal; ++r) {
-          std::cout<<", "<<prim_pt[r];
-        }
-        std::cout<<std::endl;
+        DumpPrimitiveVars(prim_pt);
       }
 
       ps_.PrimToCon(prim_pt, cons_pt, b, g3d);
 
       if (m==3 && k==8 && j==47 && i==13) {
-        std::cout<<"prim_pt: "<<prim_pt[0];
-        for (int r=1; r<PYF+nscal; ++r) {
-          std::cout<<", "<<prim_pt[r];
-        }
-        std::cout<<std::endl;
+        DumpPrimitiveVars(prim_pt);
       }
 
       // Check for NaNs
