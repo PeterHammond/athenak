@@ -234,6 +234,8 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       if (!read_success) {
         printf("error reading MultiTable 3D subtable: %s\n",fnames_3D[idx].c_str());
         err = 100+idx;
+      } else {
+        printf("Read MultiTable 3D subtable: %s\n",fnames_3D[idx].c_str());
       }
     }
 
@@ -242,6 +244,8 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       if (!read_success) {
         printf("error reading MultiTable 2D subtable: %s\n",fnames_2D[idx].c_str());
         err = 100+n_tables_3D+idx;
+      } else {
+        printf("Read MultiTable 2D subtable: %s\n",fnames_2D[idx].c_str());
       }
     }
 
@@ -249,6 +253,8 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     if (!read_success) {
     printf("error reading MultiTable T Union subtable.\n");
       err = 200;
+    } else {
+      printf("Read MultiTable T Union subtable.\n");
     }
 
     if (err<0) {
