@@ -285,7 +285,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real e_min = MinimumEnergy(nb, Y);
       Real e_max = MaximumEnergy(nb, Y);
       if (e <= e_min) {
-        e = e_min;
         return min_T;
       } else if (e >= e_max) {
         return max_T;
@@ -301,7 +300,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real p_min = MinimumPressure(nb, Y);
       Real p_max = MaximumPressure(nb, Y);
       if (p <= p_min) {
-        p = p_min;
         return min_T;
       } else if (p >= p_max) {
         return max_T;
