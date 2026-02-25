@@ -302,40 +302,14 @@ class PrimitiveSolverHydro {
       //prim_pt[PTM] = eos_.GetTemperatureFromE(prim_pt[PRH], e, &prim_pt[PYF]);
       //prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
 
-      if (m==35 && k==8 && j==47 && i==13) {
-        Kokkos::printf("prim_pt with Tmin\n");
-        prim_pt[PTM] = eos_.GetMinimumTemperature();
-        prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
-        DumpPrimitiveVars(prim_pt);
-
-        Kokkos::printf("prim_pt with Tmax\n");
-        prim_pt[PTM] = eos_.GetMaximumTemperature();
-        prim_pt[PPR] = eos_.GetPressure(prim_pt[PRH], prim_pt[PTM], &prim_pt[PYF]);
-        DumpPrimitiveVars(prim_pt);
-      }
-
       prim_pt[PPR] = prim(m, IPR, k, j, i);
-      if (m==35 && k==8 && j==47 && i==13) {
-        Kokkos::printf("prim_pt after load\n");
-        DumpPrimitiveVars(prim_pt);
-      }
 
       // Apply the floor to make sure these values are physical.
       prim_pt[PTM] = eos_.GetTemperatureFromP(prim_pt[PRH], prim_pt[PPR], &prim_pt[PYF]);
       bool floor = eos_.ApplyPrimitiveFloor(prim_pt[PRH], &prim_pt[PVX],
                                            prim_pt[PPR], prim_pt[PTM], &prim_pt[PYF]);
-      
-      if (m==35 && k==8 && j==47 && i==13) {
-        Kokkos::printf("prim_pt after GetTemperatureFromP\n");
-        DumpPrimitiveVars(prim_pt);
-      }
 
       ps_.PrimToCon(prim_pt, cons_pt, b, g3d);
-
-      if (m==35 && k==8 && j==47 && i==13) {
-        Kokkos::printf("prim_pt after PrimToCon\n");
-        DumpPrimitiveVars(prim_pt);
-      }
 
       // Check for NaNs
       if (CheckForConservedNaNs(cons_pt)) {
