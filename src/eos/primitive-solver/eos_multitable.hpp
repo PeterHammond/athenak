@@ -424,14 +424,14 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       // Indicies and weights
       int in[MAX_TABLES], iy[MAX_TABLES];
-      Real wn0[MAX_TABLES], wn1[MAX_TABLES], wy0[MAX_TABLES], wy1[MAX_TABLES];
+      Real wn1[MAX_TABLES], wy1[MAX_TABLES];
 
       for (int i=0; i<n_tables_3D; ++i) {
         Real ni, yi;
         GetPartialInputs3D(i, nb, Y, ni, yi);
 
-        weight_idx_ln(i, &(wn0[i]), &(wn1[i]), &(in[i]), log2_(ni));
-        weight_idx_yi(i, &(wy0[i]), &(wy1[i]), &(iy[i]), yi);
+        weight_idx_ln(i, &(wn1[i]), &(in[i]), log2_(ni));
+        weight_idx_yi(i, &(wy1[i]), &(iy[i]), yi);
 
         // printf("%d %e %e %e %e\n",i,nb,Y[0],ni,yi);
       }
@@ -440,16 +440,14 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         Real ni;
         GetPartialInputs2D(i, nb, Y, ni);
 
-        weight_idx_ln(i, &(wn0[i]), &(wn1[i]), &(in[i]), log2_(ni));
+        weight_idx_ln(i, &(wn1[i]), &(in[i]), log2_(ni));
 
         // printf("%d %e %e %e\n",i,nb,Y[0],ni);
       }
-
-      // printf("%d %f %f %d %f %f %d %f %f\n",in[0],wn0[0],wn1[0],in[1],wn0[1],wn1[1],iy[0],wy0[0],wy1[0]);
       
       // TODO Fix
       auto f = [=](Real lt) {
-        return RootFunction(lt+log_t_offset, var, iv, in, iy, wn0, wn1, wy0, wy1, this);
+        return RootFunction(lt+log_t_offset, var, iv, in, iy, wn1, wy1, this);
       };
 
       int ilo = 0;
@@ -509,7 +507,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real lb = log_t_union(ilo)+log_t_offset;
       Real ub = log_t_union(ihi)+log_t_offset;
 
-      bool result = root.FalsePosition(RootFunction, lb, ub, lt_fp, 1e-12, var, iv, in, iy, wn0, wn1, wy0, wy1, this);
+      bool result = root.FalsePosition(RootFunction, lb, ub, lt_fp, 1e-14, var, iv, in, iy, wn1, wy1, this);
       assert(result);
       
       // printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
@@ -582,87 +580,78 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     KOKKOS_INLINE_FUNCTION Real eval_at_lnty(int table_idx, int iv, Real ln, Real lt, Real yi) const {
       int in, iy, it;
-      Real wn0, wn1, wy0, wy1, wt0, wt1;
+      Real wn1, wy1, wt1;
 
-      weight_idx_ln(table_idx, &wn0, &wn1, &in, ln);
-      weight_idx_yi(table_idx, &wy0, &wy1, &iy, yi);
-      weight_idx_lt(table_idx, &wt0, &wt1, &it, lt);
+      weight_idx_ln(table_idx, &wn1, &in, ln);
+      weight_idx_yi(table_idx, &wy1, &iy, yi);
+      weight_idx_lt(table_idx, &wt1, &it, lt);
 
       return
-        wn0 * (wy0 * (wt0 * table(index3D(table_idx, iv, in+0, iy+0, it+0))   +
-                      wt1 * table(index3D(table_idx, iv, in+0, iy+0, it+1)))  +
-               wy1 * (wt0 * table(index3D(table_idx, iv, in+0, iy+1, it+0))   +
-                      wt1 * table(index3D(table_idx, iv, in+0, iy+1, it+1)))) +
-        wn1 * (wy0 * (wt0 * table(index3D(table_idx, iv, in+1, iy+0, it+0))   +
-                      wt1 * table(index3D(table_idx, iv, in+1, iy+0, it+1)))  +
-               wy1 * (wt0 * table(index3D(table_idx, iv, in+1, iy+1, it+0))   +
-                      wt1 * table(index3D(table_idx, iv, in+1, iy+1, it+1))));
+        (1.0-wn1) * ((1.0-wy1) * ((1.0-wt1) * table(index3D(table_idx, iv, in+0, iy+0, it+0))   +
+                                       wt1  * table(index3D(table_idx, iv, in+0, iy+0, it+1)))  +
+                          wy1  * ((1.0-wt1) * table(index3D(table_idx, iv, in+0, iy+1, it+0))   +
+                                       wt1  * table(index3D(table_idx, iv, in+0, iy+1, it+1)))) +
+             wn1  * ((1.0-wy1) * ((1.0-wt1) * table(index3D(table_idx, iv, in+1, iy+0, it+0))   +
+                                       wt1  * table(index3D(table_idx, iv, in+1, iy+0, it+1)))  +
+                          wy1  * ((1.0-wt1) * table(index3D(table_idx, iv, in+1, iy+1, it+0))   +
+                                       wt1  * table(index3D(table_idx, iv, in+1, iy+1, it+1))));
     }
 
     KOKKOS_INLINE_FUNCTION Real eval_at_lnt(int table_idx, int iv, Real ln, Real lt) const {
       int in, it;
-      Real wn0, wn1, wt0, wt1;
+      Real wn1, wt1;
 
-      weight_idx_ln(table_idx, &wn0, &wn1, &in, ln);
-      weight_idx_lt(table_idx, &wt0, &wt1, &it, lt);
+      weight_idx_ln(table_idx, &wn1, &in, ln);
+      weight_idx_lt(table_idx, &wt1, &it, lt);
 
       return
-        wn0 * (wt0 * table(index2D(table_idx, iv, in+0, it+0))   +
-               wt1 * table(index2D(table_idx, iv, in+0, it+1)))  +
-        wn1 * (wt0 * table(index2D(table_idx, iv, in+1, it+0))   +
-               wt1 * table(index2D(table_idx, iv, in+1, it+1)));
+        (1.0-wn1) * ((1.0-wt1) * table(index2D(table_idx, iv, in+0, it+0))   +
+                          wt1  * table(index2D(table_idx, iv, in+0, it+1)))  +
+             wn1  * ((1.0-wt1) * table(index2D(table_idx, iv, in+1, it+0))   +
+                          wt1  * table(index2D(table_idx, iv, in+1, it+1)));
     }
 
-    KOKKOS_INLINE_FUNCTION void weight_idx_ln(int table_idx, Real *w0, Real *w1, int *in, Real ln) const {
+    KOKKOS_INLINE_FUNCTION void weight_idx_ln(int table_idx, Real *w1, int *in, Real ln) const {
       int offset = offset_ni(table_idx);
       if (ln<=log_ni(offset)) {
         *in = 0;
-        *w0 = 1.0;
         *w1 = 0.0;
       } else if (ln>=log_ni(offset+nni(table_idx)-1)) {
         *in = nni(table_idx)-2;
-        *w0 = 0.0;
         *w1 = 1.0;
       } else {
         *in = (ln - log_ni(offset))*inv_log_ni(table_idx);
         *w1 = (ln - log_ni(offset + (*in)))*inv_log_ni(table_idx);
-        *w0 = 1.0 - (*w1);
       }
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void weight_idx_yi(int table_idx, Real *w0, Real *w1, int *iy, Real yi) const {
+    KOKKOS_INLINE_FUNCTION void weight_idx_yi(int table_idx, Real *w1, int *iy, Real yi) const {
       int offset = offset_yi(table_idx);
       if (yi<=this->yi(offset)) {
         *iy = 0;
-        *w0 = 1.0;
         *w1 = 0.0;
       } else if (yi>=this->yi(offset+nyi(table_idx)-1)) {
         *iy = nyi(table_idx)-2;
-        *w0 = 0.0;
         *w1 = 1.0;
       } else {
         *iy = (yi - this->yi(offset))*inv_yi(table_idx);
         *w1 = (yi - this->yi(offset + (*iy)))*inv_yi(table_idx);
-        *w0 = 1.0 - (*w1);
       }
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void weight_idx_lt(int table_idx, Real *w0, Real *w1, int *it, Real lt) const {
+    KOKKOS_INLINE_FUNCTION void weight_idx_lt(int table_idx, Real *w1, int *it, Real lt) const {
       int offset = offset_t(table_idx);
       if (lt<=log_t(offset)) {
         *it = 0;
-        *w0 = 1.0;
         *w1 = 0.0;
       } else if (lt>=log_t(offset + nt(table_idx) - 1)) {
         *it = nt(table_idx)-2;
-        *w0 = 0.0;
         *w1 = 1.0;
       } else{
         *it = (lt - log_t(offset))*inv_log_t(table_idx);
         *w1 = (lt - log_t(offset + (*it)))*inv_log_t(table_idx);
-        *w0 = 1.0 - (*w1);
       }
       return;
     }
@@ -761,35 +750,35 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       public:
         KOKKOS_INLINE_FUNCTION Real operator()(const Real lt_o, const Real var, 
                                                const int iv, const int *in, const int *iy, 
-                                               const Real *wn0, const Real *wn1, const Real *wy0, const Real *wy1, 
+                                               const Real *wn1, const Real *wy1, 
                                                const EOSMultiTable* pparent) const {
           Real var_pt = 0.0;
           Real lt = lt_o - pparent->log_t_offset;
 
           // 3D Tables
           for (int i=0; i<pparent->n_tables_3D; ++i) {
-            Real wt0, wt1;
+            Real wt1;
             int it;
-            pparent->weight_idx_lt(i, &wt0, &wt1, &it, lt);
-            var_pt += pparent->exp2_(wn0[i] * (wy0[i] * (wt0 * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+0, it+0))   +
-                                                         wt1 * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+0, it+1)))  +
-                                               wy1[i] * (wt0 * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+1, it+0))   +
-                                                         wt1 * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+1, it+1)))) +
-                                     wn1[i] * (wy0[i] * (wt0 * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+0, it+0))   +
-                                                         wt1 * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+0, it+1)))  +
-                                               wy1[i] * (wt0 * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+1, it+0))   +
-                                                         wt1 * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+1, it+1)))));
+            pparent->weight_idx_lt(i, &wt1, &it, lt);
+            var_pt += pparent->exp2_((1.0-wn1[i]) * ((1.0-wy1[i]) * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+0, it+0))   +
+                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+0, it+1)))  +
+                                                          wy1[i]  * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+1, it+0))   +
+                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+1, it+1)))) +
+                                          wn1[i]  * ((1.0-wy1[i]) * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+0, it+0))   +
+                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+0, it+1)))  +
+                                                          wy1[i]  * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+1, it+0))   +
+                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+1, it+1)))));
           }
 
           // 2D Tables
           for (int i=pparent->n_tables_3D; i<pparent->n_tables_3D+pparent->n_tables_2D; ++i) {
-            Real wt0, wt1;
+            Real wt1;
             int it;
-            pparent->weight_idx_lt(i, &wt0, &wt1, &it, lt);
-            var_pt += pparent->exp2_(wn0[i] * (wt0 * pparent->table(pparent->index2D(i, iv, in[i]+0, it+0))   +
-                                               wt1 * pparent->table(pparent->index2D(i, iv, in[i]+0, it+1)))  +
-                                     wn1[i] * (wt0 * pparent->table(pparent->index2D(i, iv, in[i]+1, it+0))   +
-                                               wt1 * pparent->table(pparent->index2D(i, iv, in[i]+1, it+1))));
+            pparent->weight_idx_lt(i, &wt1, &it, lt);
+            var_pt += pparent->exp2_((1.0-wn1[i]) * ((1.0-wt1) * pparent->table(pparent->index2D(i, iv, in[i]+0, it+0))   +
+                                                          wt1  * pparent->table(pparent->index2D(i, iv, in[i]+0, it+1)))  +
+                                          wn1[i]  * ((1.0-wt1) * pparent->table(pparent->index2D(i, iv, in[i]+1, it+0))   +
+                                                          wt1  * pparent->table(pparent->index2D(i, iv, in[i]+1, it+1))));
           }
 
           if (pparent->use_photons) {
