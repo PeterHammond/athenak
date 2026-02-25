@@ -57,7 +57,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     /// Set the number of species. Throw an exception if
     /// the number of species is invalid.
-    KOKKOS_INLINE_FUNCTION void SetNSpecies(int n) {
+    KOKKOS_INLINE_FUNCTION void SetNSpecies(const int n) {
       // Number of species must be within limits
       assert (n<=MAX_SPECIES && n>=0);
     
@@ -65,13 +65,13 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void SetUsePhotons(bool photons) {
+    KOKKOS_INLINE_FUNCTION void SetUsePhotons(const bool photons) {
       use_photons = photons;
       return;
     }
 
     /// Set the EOS unit system.
-    KOKKOS_INLINE_FUNCTION void SetEOSUnitSystem(UnitSystem units) {
+    KOKKOS_INLINE_FUNCTION void SetEOSUnitSystem(const UnitSystem units) {
       eos_units = units;
       return;
     }
@@ -123,7 +123,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     ~EOSMultiTable() {}
 
     /// Calculate the energy density using.
-    KOKKOS_INLINE_FUNCTION Real Energy(Real nb, Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Energy(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
       Real result = 0.0;
 
@@ -146,7 +146,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the pressure using.
-    KOKKOS_INLINE_FUNCTION Real Pressure(Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Pressure(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
       Real result = 0.0;
 
@@ -169,7 +169,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the entropy per baryon using.
-    KOKKOS_INLINE_FUNCTION Real Entropy(Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Entropy(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
       Real result = 0.0;
 
@@ -193,14 +193,14 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the enthalpy per baryon using.
-    KOKKOS_INLINE_FUNCTION Real Enthalpy(Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Enthalpy(const Real nb, const Real T, const Real *Y) const {
       Real const P = Pressure(nb, T, Y);
       Real const e = Energy(nb, T, Y);
       return (P + e)/nb;
     }
 
     /// Calculate the sound speed.
-    KOKKOS_INLINE_FUNCTION Real SoundSpeed(Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real SoundSpeed(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
       Real h = Enthalpy(nb, T, Y);
       Real dpdn = 0.0; // (ni/nb)*dPi/dni = dPi/dnb
@@ -239,7 +239,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the specific internal energy per unit mass
-    KOKKOS_INLINE_FUNCTION Real SpecificInternalEnergy(Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real SpecificInternalEnergy(const Real nb, const Real T, const Real *Y) const {
       return Energy(nb, T, Y)/(mb*nb) - 1;
     }
 
@@ -260,27 +260,27 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Get the minimum pressure at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MinimumPressure(Real nb, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MinimumPressure(const Real nb, const Real *Y) const {
       return Pressure(nb, min_T, Y);
     }
 
     /// Get the maximum pressure at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MaximumPressure(Real nb, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MaximumPressure(const Real nb, const Real *Y) const {
       return Pressure(nb, max_T, Y);
     }
 
     /// Get the minimum energy at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MinimumEnergy(Real nb, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MinimumEnergy(const Real nb, const Real *Y) const {
       return Energy(nb, min_T, Y);
     }
 
     /// Get the maximum energy at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MaximumEnergy(Real nb, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MaximumEnergy(const Real nb, const Real *Y) const {
       return Energy(nb, max_T, Y);
     }
 
     /// Temperature from energy density
-    KOKKOS_INLINE_FUNCTION Real TemperatureFromE(Real nb, Real e, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real TemperatureFromE(const Real nb, const Real e, const Real *Y) const {
       assert (initialised);
       Real e_min = MinimumEnergy(nb, Y);
       Real e_max = MaximumEnergy(nb, Y);
@@ -296,7 +296,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the temperature using.
-    KOKKOS_INLINE_FUNCTION Real TemperatureFromP(Real nb, Real p, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real TemperatureFromP(const Real nb, const Real p, const Real *Y) const {
       assert (initialised);
       Real p_min = MinimumPressure(nb, Y);
       Real p_max = MaximumPressure(nb, Y);
@@ -329,67 +329,67 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
 
     // Evaluation of subtables
-    KOKKOS_INLINE_FUNCTION Real PartialPressure3D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialPressure3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
       return exp2_(eval_at_nty(table_idx, ECLOGP, ni, T, yi)) - Pmin(table_idx);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialPressure2D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialPressure2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni;
       GetPartialInputs2D(table_idx, nb, Y, ni);
       return exp2_(eval_at_nt(table_idx, ECLOGP, ni, T)) - Pmin(table_idx);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialEnergyDensity3D(int table_idx, Real nb, Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialEnergyDensity3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
       return exp2_(eval_at_nty(table_idx, ECLOGE, ni, T, yi));
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialEnergyDensity2D(int table_idx, Real nb, Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialEnergyDensity2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni;
       GetPartialInputs2D(table_idx, nb, Y, ni);
       return exp2_(eval_at_nt(table_idx, ECLOGE, ni, T));
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialEntropyDensity3D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialEntropyDensity3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
       return eval_at_nty(table_idx, ECENTD, ni, T, yi);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialEntropyDensity2D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialEntropyDensity2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni;
       GetPartialInputs2D(table_idx, nb, Y, ni);
       return eval_at_nt(table_idx, ECENTD, ni, T);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDPDN3D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDPDN3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
       return (ni/nb)*eval_at_nty(table_idx, ECDPDN, ni, T, yi);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDPDN2D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDPDN2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni;
       GetPartialInputs2D(table_idx, nb, Y, ni);
       return (ni/nb)*eval_at_nt(table_idx, ECDPDN, ni, T);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDPDT3D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDPDT3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
       return eval_at_nty(table_idx, ECDPDT, ni, T, yi);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDPDT2D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDPDT2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni;
       GetPartialInputs2D(table_idx, nb, Y, ni);
       return eval_at_nt(table_idx, ECDPDT, ni, T);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDSDN3D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDSDN3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
       Real s    = eval_at_nty(table_idx, ECENTD, ni, T, yi);
@@ -397,7 +397,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return ni*dsdn - s;
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDSDN2D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDSDN2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni;
       GetPartialInputs2D(table_idx, nb, Y, ni);
       Real s    = eval_at_nt(table_idx, ECENTD, ni, T);
@@ -405,20 +405,20 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return ni*dsdn - s;
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDSDT3D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDSDT3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
       return eval_at_nty(table_idx, ECDSDT, ni, T, yi);
     }
 
-    KOKKOS_INLINE_FUNCTION Real PartialDSDT2D(int table_idx, Real nb, Real T, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real PartialDSDT2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni;
       GetPartialInputs2D(table_idx, nb, Y, ni);
       return eval_at_nt(table_idx, ECDSDT, ni, T);
     }
 
     // Temperature inversion
-    KOKKOS_INLINE_FUNCTION Real TemperatureFromVar(int iv, Real var, Real nb, Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real TemperatureFromVar(const int iv, const Real var, const Real nb, const Real *Y) const {
       assert(initialised);
       assert(iv==ECLOGP || iv==ECLOGE || iv==ECENTD);
 
@@ -535,7 +535,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     // Accessing tables
-    KOKKOS_INLINE_FUNCTION void GetPartialInputs3D(int table_idx, Real nb, const Real *Y, Real &ni, Real &yi) const {
+    KOKKOS_INLINE_FUNCTION void GetPartialInputs3D(const int table_idx, const Real nb, const Real *Y, Real &ni, Real &yi) const {
       Real Ni, Yi;
       GetPartialNi(table_idx, Y, Ni);
       GetPartialYi(table_idx, Y, Yi);
@@ -546,7 +546,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void GetPartialInputs2D(int table_idx, Real nb, const Real *Y, Real &ni) const {
+    KOKKOS_INLINE_FUNCTION void GetPartialInputs2D(const int table_idx, const Real nb, const Real *Y, Real &ni) const {
       Real Ni;
       GetPartialNi(table_idx, Y,Ni);
       ni = Ni*nb;
@@ -554,7 +554,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void GetPartialNi(int table_idx, const Real *Y, Real &Ni) const {
+    KOKKOS_INLINE_FUNCTION void GetPartialNi(const int table_idx, const Real *Y, Real &Ni) const {
       Ni = n_weights(table_idx,0);
       for (int i=0; i<n_species; ++i) {
         Ni += n_weights(table_idx,1+i)*Y[i];
@@ -562,7 +562,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void GetPartialYi(int table_idx, const Real *Y, Real &Yi) const {
+    KOKKOS_INLINE_FUNCTION void GetPartialYi(const int table_idx, const Real *Y, Real &Yi) const {
       Yi = y_weights(table_idx,0);
       for (int i=0; i<n_species; ++i) {
         Yi += y_weights(table_idx,1+i)*Y[i];
@@ -570,15 +570,15 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION Real eval_at_nty(int table_idx, int vi, Real ni, Real T, Real Yi) const {
+    KOKKOS_INLINE_FUNCTION Real eval_at_nty(const int table_idx, const int vi, const Real ni, const Real T, const Real Yi) const {
       return eval_at_lnty(table_idx, vi, log2_(ni), log2_(T), Yi);
     }
 
-    KOKKOS_INLINE_FUNCTION Real eval_at_nt(int table_idx, int vi, Real ni, Real T) const {
+    KOKKOS_INLINE_FUNCTION Real eval_at_nt(const int table_idx, const int vi, const Real ni, const Real T) const {
       return eval_at_lnt(table_idx, vi, log2_(ni), log2_(T));
     }
 
-    KOKKOS_INLINE_FUNCTION Real eval_at_lnty(int table_idx, int iv, Real ln, Real lt, Real yi) const {
+    KOKKOS_INLINE_FUNCTION Real eval_at_lnty(const int table_idx, const int iv, const Real ln, const Real lt, const Real yi) const {
       int in, iy, it;
       Real wn1, wy1, wt1;
 
@@ -597,7 +597,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
                                        wt1  * table(index3D(table_idx, iv, in+1, iy+1, it+1))));
     }
 
-    KOKKOS_INLINE_FUNCTION Real eval_at_lnt(int table_idx, int iv, Real ln, Real lt) const {
+    KOKKOS_INLINE_FUNCTION Real eval_at_lnt(const int table_idx, const int iv, const Real ln, const Real lt) const {
       int in, it;
       Real wn1, wt1;
 
@@ -611,7 +611,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
                           wt1  * table(index2D(table_idx, iv, in+1, it+1)));
     }
 
-    KOKKOS_INLINE_FUNCTION void weight_idx_ln(int table_idx, Real *w1, int *in, Real ln) const {
+    KOKKOS_INLINE_FUNCTION void weight_idx_ln(const int table_idx, Real *w1, int *in, const Real ln) const {
       int offset = offset_ni(table_idx);
       if (ln<=log_ni(offset)) {
         *in = 0;
@@ -626,7 +626,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void weight_idx_yi(int table_idx, Real *w1, int *iy, Real yi) const {
+    KOKKOS_INLINE_FUNCTION void weight_idx_yi(const int table_idx, Real *w1, int *iy, const Real yi) const {
       int offset = offset_yi(table_idx);
       if (yi<=this->yi(offset)) {
         *iy = 0;
@@ -641,7 +641,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void weight_idx_lt(int table_idx, Real *w1, int *it, Real lt) const {
+    KOKKOS_INLINE_FUNCTION void weight_idx_lt(const int table_idx, Real *w1, int *it, const Real lt) const {
       int offset = offset_t(table_idx);
       if (lt<=log_t(offset)) {
         *it = 0;
@@ -656,12 +656,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION int index3D(int table_idx, int iv, int in, int iy, int it) const {
+    KOKKOS_INLINE_FUNCTION int index3D(const int table_idx, const int iv, const int in, const int iy, const int it) const {
       // return offset_table(table_idx) + iv*(nni(table_idx)*nyi(table_idx)*nt(table_idx)) + in*(nyi(table_idx)*nt(table_idx)) + iy*(nt(table_idx)) + it;
       return offset_table(table_idx) + it + nt(table_idx)*(iy + nyi(table_idx)*(in + nni(table_idx)*iv));
     }
 
-    KOKKOS_INLINE_FUNCTION int index2D(int table_idx, int iv, int in, int it) const {
+    KOKKOS_INLINE_FUNCTION int index2D(const int table_idx, const int iv, const int in, const int it) const {
       // return offset_table(table_idx) + iv*(nni(table_idx)*nt(table_idx)) + in*(nt(table_idx)) + it;
       return offset_table(table_idx) + it + nt(table_idx)*(in + nni(table_idx)*iv);
     }
