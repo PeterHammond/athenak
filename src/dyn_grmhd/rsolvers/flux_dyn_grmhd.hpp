@@ -65,9 +65,9 @@ void SingleStateFlux(const PrimitiveSolverHydro<EOSPolicy, ErrorPolicy>& eos,
 
   // Calculate fluxes for the left state.
   flux_l[CDN] = cons_l[CDN]*vc_s;
-  flux_l[CSX] = (cons_l[CSX]*vc_s - bd[0]*Bu_l[ibx]*iW_s);
-  flux_l[CSY] = (cons_l[CSY]*vc_s - bd[1]*Bu_l[ibx]*iW_s);
-  flux_l[CSZ] = (cons_l[CSZ]*vc_s - bd[2]*Bu_l[ibx]*iW_s);
+  flux_l[CSX] = (cons_l[CSX]*vc_s - bd_s[0]*Bu_l[ibx]*iW_s);
+  flux_l[CSY] = (cons_l[CSY]*vc_s - bd_s[1]*Bu_l[ibx]*iW_s);
+  flux_l[CSZ] = (cons_l[CSZ]*vc_s - bd_s[2]*Bu_l[ibx]*iW_s);
   flux_l[csx] += (prim_l[PPR] + 0.5*bsql);
   flux_l[CTA] = (cons_l[CTA]*vc_s - alpha*bu0_s*Bu_l[ibx]*iW_s
           + (prim_l[PPR] + 0.5*bsql)*prim_l[ivx]*iW_s);
@@ -96,9 +96,9 @@ void SingleStateFlux(const PrimitiveSolverHydro<EOSPolicy, ErrorPolicy>& eos,
 
   // Calculate fluxes for the right state.
   flux_r[CDN] = cons_r[CDN]*vc_s;
-  flux_r[CSX] = (cons_r[CSX]*vc_s - bdr[0]*Bu_r[ibx]*iW_s);
-  flux_r[CSY] = (cons_r[CSY]*vc_s - bdr[1]*Bu_r[ibx]*iW_s);
-  flux_r[CSZ] = (cons_r[CSZ]*vc_s - bdr[2]*Bu_r[ibx]*iW_s);
+  flux_r[CSX] = (cons_r[CSX]*vc_s - bd_s[0]*Bu_r[ibx]*iW_s);
+  flux_r[CSY] = (cons_r[CSY]*vc_s - bd_s[1]*Bu_r[ibx]*iW_s);
+  flux_r[CSZ] = (cons_r[CSZ]*vc_s - bd_s[2]*Bu_r[ibx]*iW_s);
   flux_r[csx] += (prim_r[PPR] + 0.5*bsqr);
   flux_r[CTA] = (cons_r[CTA]*vc_s - alpha*bu0_s*Bu_r[ibx]*iW_s
           + (prim_r[PPR] + 0.5*bsqr)*prim_r[ivx]*iW_s);
