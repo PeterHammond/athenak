@@ -59,7 +59,7 @@ void SingleStateFlux(const PrimitiveSolverHydro<EOSPolicy, ErrorPolicy>& eos,
   Real bd_s[3], Bd_s[3];
   Primitive::LowerVector(Bd_s, Bu_l, g3d);
   for (int a = 0; a < 3; a++) {
-    bd[a] = (alpha*bu0_s*ud_s[a] + Bd_s[a])*iW_s;
+    bd_s[a] = (alpha*bu0_s*ud_s[a] + Bd_s[a])*iW_s;
   }
   bsql = (Primitive::SquareVector(Bu_l, g3d) + SQR(alpha*bu0_s))*iWsq_s;
 
