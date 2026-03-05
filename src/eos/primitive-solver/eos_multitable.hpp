@@ -79,16 +79,15 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
   protected:
     /// Constructor
     EOSMultiTable(): 
-        nni("nni",1), nyi("nyi",1), nt("nt",1),
-        inv_log_ni("inv_dlog_ni",1), inv_yi("inv_dyi",1), inv_log_t("inv_dlog_t",1),
+        nni("nni",1), nyi("nyi",1),
+        inv_log_ni("inv_dlog_ni",1), inv_yi("inv_dyi",1),
         Pmin("Pmin",1),
         ni("ni",1), log_ni("log_ni",1),
         yi("yi",1),
-        t("t",1), log_t("log_t",1),
         table("table", 1),
-        offset_ni("offset_ni", 1), offset_yi("offset_yi", 1), offset_t("offset_t", 1), offset_table("offset_table", 1),
+        offset_ni("offset_ni", 1), offset_yi("offset_yi", 1), offset_table("offset_table", 1),
         y_weights("y_weights", 1, 1), n_weights("n_weights", 1, 1),
-        t_union("T",1), log_t_union("T",1) {
+        t_shared("T",1), log_t_shared("log_T",1) {
 
       initialised = false;
       use_photons = false;
@@ -97,10 +96,9 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       n_tables_3D  = 0;
       n_ni_full    = 0;
       n_yi_full    = 0;
-      n_T_full     = 0;
       n_table_full = 0;
       n_species    = 0;
-      n_T_union    = 0;
+      n_t_shared   = 0;
 
       eos_units = MakeNuclear();   
 
@@ -114,6 +112,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         min_Y[i] = std::numeric_limits<Real>::quiet_NaN();
         max_Y[i] = std::numeric_limits<Real>::quiet_NaN();
       }
+      inv_log_t_shared = std::numeric_limits<Real>::quiet_NaN();
 
       Pmin_fac = 1.0e-10;
     }
@@ -232,9 +231,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       Real cs2 = (dpdn - dpdT*dsdn/(nb*dsdT))/h;
-      if (cs2<=0.0 || cs2>=1.0) {
-        printf("cs2 OOB - nb,T,Y: %e %e %e %e\n", nb,T,Y[0],cs2);
-      }
       return Kokkos::sqrt(cs2);
     }
 
@@ -323,7 +319,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     // Read subtable files
     bool Read2DTableFromFile(std::string table_name, int table_idx);
     bool Read3DTableFromFile(std::string table_name, int table_idx);
-    bool ReadTUnionTableFromFile(std::string table_name);
+    bool ReadTSharedTableFromFile(std::string table_name);
 
 
     // Evaluation of subtables
@@ -449,9 +445,9 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       };
 
       int ilo = 0;
-      int ihi = n_T_union-1;
-      Real lt_lo = log_t_union(ilo);
-      Real lt_hi = log_t_union(ihi);
+      int ihi = n_t_shared-1;
+      Real lt_lo = log_t_shared(ilo);
+      Real lt_hi = log_t_shared(ihi);
 
       Real flo = f(lt_lo);
       Real fhi = f(lt_hi);
@@ -477,7 +473,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
           break;
         } else {
           ilo += 1;
-          flo = f(log_t_union(ilo));
+          flo = f(log_t_shared(ilo));
         }
       }
 
@@ -487,7 +483,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       while (ihi - ilo > 1) {
         int ip = ilo + (ihi - ilo)/2;
-        Real fp = f(log_t_union(ip));
+        Real fp = f(log_t_shared(ip));
         if (fp*flo <= 0) {
           ihi = ip;
           fhi = fp;
@@ -502,8 +498,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       assert(ihi - ilo == 1);
 
       Real lt_fp;
-      Real lb = log_t_union(ilo)+log_t_offset;
-      Real ub = log_t_union(ihi)+log_t_offset;
+      Real lb = log_t_shared(ilo)+log_t_offset;
+      Real ub = log_t_shared(ihi)+log_t_offset;
 
       bool result = root.FalsePosition(RootFunction, lb, ub, lt_fp, 1e-14, var, iv, in, iy, wn1, wy1, this);
       assert(result);
@@ -640,28 +636,27 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     KOKKOS_INLINE_FUNCTION void weight_idx_lt(const int table_idx, Real *w1, int *it, const Real lt) const {
-      int offset = offset_t(table_idx);
-      if (lt<=log_t(offset)) {
+      if (lt<=log_t_shared(0)) {
         *it = 0;
         *w1 = 0.0;
-      } else if (lt>=log_t(offset + nt(table_idx) - 1)) {
-        *it = nt(table_idx)-2;
+      } else if (lt>=log_t_shared(n_t_shared - 1)) {
+        *it = n_t_shared-2;
         *w1 = 1.0;
       } else{
-        *it = (lt - log_t(offset))*inv_log_t(table_idx);
-        *w1 = (lt - log_t(offset + (*it)))*inv_log_t(table_idx);
+        *it = (lt - log_t_shared(0))*inv_log_t_shared;
+        *w1 = (lt - log_t_shared(*it))*inv_log_t_shared;
       }
       return;
     }
 
     KOKKOS_INLINE_FUNCTION int index3D(const int table_idx, const int iv, const int in, const int iy, const int it) const {
       // return offset_table(table_idx) + iv*(nni(table_idx)*nyi(table_idx)*nt(table_idx)) + in*(nyi(table_idx)*nt(table_idx)) + iy*(nt(table_idx)) + it;
-      return offset_table(table_idx) + it + nt(table_idx)*(iy + nyi(table_idx)*(in + nni(table_idx)*iv));
+      return offset_table(table_idx) + it + n_t_shared*(iy + nyi(table_idx)*(in + nni(table_idx)*iv));
     }
 
     KOKKOS_INLINE_FUNCTION int index2D(const int table_idx, const int iv, const int in, const int it) const {
       // return offset_table(table_idx) + iv*(nni(table_idx)*nt(table_idx)) + in*(nt(table_idx)) + it;
-      return offset_table(table_idx) + it + nt(table_idx)*(in + nni(table_idx)*iv);
+      return offset_table(table_idx) + it + n_t_shared*(in + nni(table_idx)*iv);
     }
 
     /*
@@ -721,26 +716,25 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     int n_tables_2D;
     int n_ni_full;
     int n_yi_full;
-    int n_T_full;
     int n_table_full;
 
     // Table storage
-    DvceArray1D<int> nni, nyi, nt;                   // <number density, fraction, temperature> samples for each subtable
-    DvceArray1D<Real> inv_log_ni, inv_yi, inv_log_t; // inverse <log number density, fraction, log temperature> spacing for each subtable
-    DvceArray1D<Real> Pmin;                          // pressure offsets for where pressure<=0
+    DvceArray1D<int> nni, nyi;            // <number density, fraction> samples for each subtable
+    DvceArray1D<Real> inv_log_ni, inv_yi; // inverse <log number density, fraction> spacing for each subtable
+    DvceArray1D<Real> Pmin;               // pressure offsets for where pressure<=0
 
     // Sequential table storage. 
     DvceArray1D<Real> ni, log_ni;                                   // <number density, log number density> for each subtable sequentially
     DvceArray1D<Real> yi;                                           // fractions for each subtable sequentially
-    DvceArray1D<Real> t, log_t;                                     // <temperature, log temperature> for each subtable sequentially
     DvceArray1D<Real> table;                                        // data for each subtable sequentially
-    DvceArray1D<int>  offset_ni, offset_yi, offset_t, offset_table; // offsets for start of each subtables data
+    DvceArray1D<int>  offset_ni, offset_yi, offset_table; // offsets for start of each subtables data
 
     DvceArray2D<int> y_weights, n_weights; // weights for calculating ni and yi from nb and Y
 
-    // Union of temperatures for rootsolver
-    DvceArray1D<Real> t_union, log_t_union;
-    int n_T_union;
+    // Shared temperature axis
+    DvceArray1D<Real> t_shared, log_t_shared;
+    int n_t_shared;
+    Real inv_log_t_shared;
 
     // TODO Fix
     /// The root solver.
