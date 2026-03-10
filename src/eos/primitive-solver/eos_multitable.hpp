@@ -80,7 +80,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     /// Constructor
     EOSMultiTable(): 
         nni("nni",1), nyi("nyi",1),
-        inv_log_ni("inv_dlog_ni",1), inv_yi("inv_dyi",1),
+        inv_dlog_ni("inv_dlog_ni",1), inv_dyi("inv_dyi",1),
         Pmin("Pmin",1),
         ni("ni",1), log_ni("log_ni",1),
         yi("yi",1),
@@ -112,7 +112,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         min_Y[i] = std::numeric_limits<Real>::quiet_NaN();
         max_Y[i] = std::numeric_limits<Real>::quiet_NaN();
       }
-      inv_log_t_shared = std::numeric_limits<Real>::quiet_NaN();
+      dlog_t_shared = std::numeric_limits<Real>::quiet_NaN();
+      inv_dlog_t_shared = std::numeric_limits<Real>::quiet_NaN();
 
       Pmin_fac = 1.0e-10;
     }
@@ -285,8 +286,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       } else if (e >= e_max) {
         return max_T;
       } else {
-        Real log_e = log2_(e);
-        return TemperatureFromVar(ECLOGE, log_e, nb, Y);
+        return TemperatureFromVar(ECLOGE, e, nb, Y);
       }
     }
 
@@ -305,9 +305,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         for (int i=0; i<n_tables_3D+n_tables_2D; ++i) {
           p_target += Pmin(i);
         }
-
-        Real log_p = log2_(p_target);
-        return TemperatureFromVar(ECLOGP, log_p, nb, Y);
+        return TemperatureFromVar(ECLOGP, p_target, nb, Y);
       }
     }
 
@@ -414,7 +412,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     // Temperature inversion
     KOKKOS_INLINE_FUNCTION Real TemperatureFromVar(const int iv, const Real var, const Real nb, const Real *Y) const {
       assert(initialised);
-      assert(iv==ECLOGP || iv==ECLOGE || iv==ECENTD);
+      assert(iv==ECLOGP || iv==ECLOGE);
 
       // Indicies and weights
       int in[MAX_TABLES], iy[MAX_TABLES];
@@ -440,17 +438,15 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
       
       // TODO Fix
-      auto f = [=](Real lt) {
-        return RootFunction(lt+log_t_offset, var, iv, in, iy, wn1, wy1, this);
+      auto f_idx = [=](int t_idx) {
+        return RootFunctionIdx(t_idx, var, iv, in, iy, wn1, wy1, this);
       };
 
       int ilo = 0;
       int ihi = n_t_shared-1;
-      Real lt_lo = log_t_shared(ilo);
-      Real lt_hi = log_t_shared(ihi);
 
-      Real flo = f(lt_lo);
-      Real fhi = f(lt_hi);
+      Real flo = f_idx(ilo);
+      Real fhi = f_idx(ihi);
       
       /*
       Real var_lo, var_hi;
@@ -473,7 +469,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
           break;
         } else {
           ilo += 1;
-          flo = f(log_t_shared(ilo));
+          flo = f_idx(ilo);
         }
       }
 
@@ -483,7 +479,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       while (ihi - ilo > 1) {
         int ip = ilo + (ihi - ilo)/2;
-        Real fp = f(log_t_shared(ip));
+        Real fp = f_idx(ip);
         if (fp*flo <= 0) {
           ihi = ip;
           fhi = fp;
@@ -497,11 +493,40 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       assert(ihi - ilo == 1);
 
-      Real lt_fp;
-      Real lb = log_t_shared(ilo)+log_t_offset;
-      Real ub = log_t_shared(ihi)+log_t_offset;
+      Real w_fp; // Solution to be calculated
+      Real lb = 0.0; // Initial bounds for w.
+      Real ub = 1.0;
 
-      bool result = root.FalsePosition(RootFunction, lb, ub, lt_fp, 1e-14, var, iv, in, iy, wn1, wy1, this);
+      // calc exponential interpolation parameters
+      Real lvar[MAX_TABLES], dlvar[MAX_TABLES]; // var_i(t) = exp(lvar[i] + w(t)*dlvar[i])
+                // 3D Tables
+      for (int i=0; i<n_tables_3D; ++i) {
+        Real lvar_lb = (1.0-wn1[i]) * ((1.0-wy1[i]) * table(index3D(i, iv, in[i]+0, iy[i]+0, ilo))  +
+                                            wy1[i]  * table(index3D(i, iv, in[i]+0, iy[i]+1, ilo))) +
+                            wn1[i]  * ((1.0-wy1[i]) * table(index3D(i, iv, in[i]+1, iy[i]+0, ilo))  +
+                                            wy1[i]  * table(index3D(i, iv, in[i]+1, iy[i]+1, ilo)));
+
+        Real lvar_ub = (1.0-wn1[i]) * ((1.0-wy1[i]) * table(index3D(i, iv, in[i]+0, iy[i]+0, ihi))  +
+                                            wy1[i]  * table(index3D(i, iv, in[i]+0, iy[i]+1, ihi))) +
+                            wn1[i]  * ((1.0-wy1[i]) * table(index3D(i, iv, in[i]+1, iy[i]+0, ihi))  +
+                                            wy1[i]  * table(index3D(i, iv, in[i]+1, iy[i]+1, ihi)));
+        lvar[i] = lvar_lb;
+        dlvar[i] = lvar_ub - lvar_lb;
+      }
+
+      // 2D Tables
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        Real lvar_lb = (1.0-wn1[i]) * table(index2D(i, iv, in[i]+0, ilo)) +
+                            wn1[i]  * table(index2D(i, iv, in[i]+1, ilo));
+
+        Real lvar_ub = (1.0-wn1[i]) * table(index2D(i, iv, in[i]+0, ihi)) +
+                            wn1[i]  * table(index2D(i, iv, in[i]+1, ihi));
+              
+        lvar[i] = lvar_lb;
+        dlvar[i] = lvar_ub - lvar_lb;
+      }
+
+      bool result = root.FalsePositionModified(RootFunctionW, lb, ub, w_fp, 1e-15, 1e-15, var, iv, ilo, lvar, dlvar, this);
       assert(result);
       
       // printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
@@ -525,7 +550,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       printf("%d %e %e %e %e %e %e %d\n", iv, var, var_Tsolve, var_Tinit, nb, Y[0], exp2_(lt_fp - log_t_offset), result);
       */
 
-      return exp2_(lt_fp - log_t_offset);
+      return exp2_(log_t_shared(ilo) + w_fp*dlog_t_shared);
     }
 
     // Accessing tables
@@ -614,8 +639,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         *in = nni(table_idx)-2;
         *w1 = 1.0;
       } else {
-        *in = (ln - log_ni(offset))*inv_log_ni(table_idx);
-        *w1 = (ln - log_ni(offset + (*in)))*inv_log_ni(table_idx);
+        *in = (ln - log_ni(offset))*inv_dlog_ni(table_idx);
+        *w1 = (ln - log_ni(offset + (*in)))*inv_dlog_ni(table_idx);
       }
       return;
     }
@@ -629,8 +654,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         *iy = nyi(table_idx)-2;
         *w1 = 1.0;
       } else {
-        *iy = (yi - this->yi(offset))*inv_yi(table_idx);
-        *w1 = (yi - this->yi(offset + (*iy)))*inv_yi(table_idx);
+        *iy = (yi - this->yi(offset))*inv_dyi(table_idx);
+        *w1 = (yi - this->yi(offset + (*iy)))*inv_dyi(table_idx);
       }
       return;
     }
@@ -643,8 +668,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         *it = n_t_shared-2;
         *w1 = 1.0;
       } else{
-        *it = (lt - log_t_shared(0))*inv_log_t_shared;
-        *w1 = (lt - log_t_shared(*it))*inv_log_t_shared;
+        *it = (lt - log_t_shared(0))*inv_dlog_t_shared;
+        *w1 = (lt - log_t_shared(*it))*inv_dlog_t_shared;
       }
       return;
     }
@@ -720,7 +745,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     // Table storage
     DvceArray1D<int> nni, nyi;            // <number density, fraction> samples for each subtable
-    DvceArray1D<Real> inv_log_ni, inv_yi; // inverse <log number density, fraction> spacing for each subtable
+    DvceArray1D<Real> inv_dlog_ni, inv_dyi; // inverse <log number density, fraction> spacing for each subtable
     DvceArray1D<Real> Pmin;               // pressure offsets for where pressure<=0
 
     // Sequential table storage. 
@@ -734,63 +759,84 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     // Shared temperature axis
     DvceArray1D<Real> t_shared, log_t_shared;
     int n_t_shared;
-    Real inv_log_t_shared;
+    Real dlog_t_shared;
+    Real inv_dlog_t_shared;
 
     // TODO Fix
-    /// The root solver.
-    class RootFunctor {
+    /// The root solvers.
+    /// This calculates the root at a given temperature index
+    class RootFunctorIdx {
       public:
-        KOKKOS_INLINE_FUNCTION Real operator()(const Real lt_o, const Real var, 
+        KOKKOS_INLINE_FUNCTION Real operator()(const int it, const Real var, 
                                                const int iv, const int *in, const int *iy, 
                                                const Real *wn1, const Real *wy1, 
                                                const EOSMultiTable* pparent) const {
           Real var_pt = 0.0;
-          Real lt = lt_o - pparent->log_t_offset;
 
           // 3D Tables
           for (int i=0; i<pparent->n_tables_3D; ++i) {
-            Real wt1;
-            int it;
-            pparent->weight_idx_lt(i, &wt1, &it, lt);
-            var_pt += pparent->exp2_((1.0-wn1[i]) * ((1.0-wy1[i]) * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+0, it+0))   +
-                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+0, it+1)))  +
-                                                          wy1[i]  * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+1, it+0))   +
-                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+1, it+1)))) +
-                                          wn1[i]  * ((1.0-wy1[i]) * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+0, it+0))   +
-                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+0, it+1)))  +
-                                                          wy1[i]  * ((1.0-wt1) * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+1, it+0))   +
-                                                                          wt1  * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+1, it+1)))));
+            var_pt += pparent->exp2_((1.0-wn1[i]) * ((1.0-wy1[i]) * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+0, it))  +
+                                                          wy1[i]  * pparent->table(pparent->index3D(i, iv, in[i]+0, iy[i]+1, it))) +
+                                          wn1[i]  * ((1.0-wy1[i]) * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+0, it))  +
+                                                          wy1[i]  * pparent->table(pparent->index3D(i, iv, in[i]+1, iy[i]+1, it))));
           }
 
           // 2D Tables
           for (int i=pparent->n_tables_3D; i<pparent->n_tables_3D+pparent->n_tables_2D; ++i) {
-            Real wt1;
-            int it;
-            pparent->weight_idx_lt(i, &wt1, &it, lt);
-            var_pt += pparent->exp2_((1.0-wn1[i]) * ((1.0-wt1) * pparent->table(pparent->index2D(i, iv, in[i]+0, it+0))   +
-                                                          wt1  * pparent->table(pparent->index2D(i, iv, in[i]+0, it+1)))  +
-                                          wn1[i]  * ((1.0-wt1) * pparent->table(pparent->index2D(i, iv, in[i]+1, it+0))   +
-                                                          wt1  * pparent->table(pparent->index2D(i, iv, in[i]+1, it+1))));
+            var_pt += pparent->exp2_((1.0-wn1[i]) * pparent->table(pparent->index2D(i, iv, in[i]+0, it)) +
+                                          wn1[i]  * pparent->table(pparent->index2D(i, iv, in[i]+1, it)));
           }
 
           if (pparent->use_photons) {
             if (iv==ECLOGP) {
-              var_pt += pparent->photonPressureConstant * pow(pparent->exp2_(lt),4);
+              var_pt += pparent->photonPressureConstant * pow(pparent->t_shared(it),4);
             } else if (iv==ECLOGE) {
-              var_pt += pparent->photonEnergyConstant * pow(pparent->exp2_(lt),4);
-            } else if (iv==ECENTD) {
-              var_pt += pparent->photonEntropyConstant * pow(pparent->exp2_(lt),3);
+              var_pt += pparent->photonEnergyConstant * pow(pparent->t_shared(it),4);
             }
           }
 
+          return (var - var_pt)/var; // N.B error is expected to be relative
+        }
+    };
 
-          return var - pparent->log2_(var_pt);
+    /// This calculates the root at a given temperature weight. 
+    /// Precomputed exponential interpolators to be passed in with lvar 
+    /// and dlvar where var_i(t) = exp(lvar[i] + w(t)*dlvar[i]) on the 
+    /// given interval.
+    class RootFunctorW {
+      public:
+        KOKKOS_INLINE_FUNCTION Real operator()(const Real wt, const Real var, 
+                                               const int iv, const int it, 
+                                               const Real *lvar, const Real *dlvar, 
+                                               const EOSMultiTable* pparent) const {
+          Real var_pt = 0.0;
+
+          // 3D Tables
+          for (int i=0; i<pparent->n_tables_3D; ++i) {
+            var_pt += pparent->exp2_(lvar[i] + wt*dlvar[i]);
+          }
+
+          // 2D Tables
+          for (int i=pparent->n_tables_3D; i<pparent->n_tables_3D+pparent->n_tables_2D; ++i) {
+            var_pt += pparent->exp2_(lvar[i] + wt*dlvar[i]);
+          }
+
+          if (pparent->use_photons) {
+            Real t_current = pparent->exp2_(pparent->log_t_shared(it) + wt*pparent->dlog_t_shared);
+            if (iv==ECLOGP) {
+              var_pt += pparent->photonPressureConstant * pow(t_current,4);
+            } else if (iv==ECLOGE) {
+              var_pt += pparent->photonEnergyConstant * pow(t_current,4);
+            }
+          }
+
+          return (var - var_pt)/var; // N.B error is expected to be relative
         }
     };
 
     NumTools::Root root;
-    RootFunctor RootFunction;
-    Real log_t_offset = 10.0;
+    RootFunctorIdx RootFunctionIdx;
+    RootFunctorW RootFunctionW;
 
 }; // class EOSMultiTable
 

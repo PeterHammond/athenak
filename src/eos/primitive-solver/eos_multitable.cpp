@@ -167,8 +167,8 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     Kokkos::realloc(nni, n_tables_3D+n_tables_2D);
     Kokkos::realloc(nyi, n_tables_3D);
 
-    Kokkos::realloc(inv_log_ni, n_tables_3D+n_tables_2D);
-    Kokkos::realloc(inv_yi,     n_tables_3D);
+    Kokkos::realloc(inv_dlog_ni, n_tables_3D+n_tables_2D);
+    Kokkos::realloc(inv_dyi,     n_tables_3D);
 
     Kokkos::realloc(Pmin, n_tables_3D+n_tables_2D);
 
@@ -324,7 +324,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   bool success = true;
   /// Create host mirrors of device arrays to read into, and copy
   HostArray1D<int>::HostMirror  host_nni = create_mirror_view(nni), host_nyi = create_mirror_view(nyi);
-  HostArray1D<Real>::HostMirror host_inv_log_ni = create_mirror_view(inv_log_ni), host_inv_yi = create_mirror_view(inv_yi);
+  HostArray1D<Real>::HostMirror host_inv_dlog_ni = create_mirror_view(inv_dlog_ni), host_inv_dyi = create_mirror_view(inv_dyi);
   HostArray1D<Real>::HostMirror host_Pmin = create_mirror_view(Pmin);
   HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni), host_offset_yi = create_mirror_view(offset_yi), host_offset_table = create_mirror_view(offset_table);
   HostArray1D<Real>::HostMirror host_ni = create_mirror_view(ni), host_log_ni = create_mirror_view(log_ni);
@@ -334,8 +334,8 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   // Copy data from device to host
   Kokkos::deep_copy(host_nni, nni);
   Kokkos::deep_copy(host_nyi, nyi);
-  Kokkos::deep_copy(host_inv_log_ni, inv_log_ni);
-  Kokkos::deep_copy(host_inv_yi, inv_yi);
+  Kokkos::deep_copy(host_inv_dlog_ni, inv_dlog_ni);
+  Kokkos::deep_copy(host_inv_dyi, inv_dyi);
   Kokkos::deep_copy(host_Pmin, Pmin);
   Kokkos::deep_copy(host_offset_ni, offset_ni);
   Kokkos::deep_copy(host_offset_yi, offset_yi);
@@ -398,7 +398,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       host_ni(host_offset_ni(table_idx)+idx_ni)     = table_ni[idx_ni];
       host_log_ni(host_offset_ni(table_idx)+idx_ni) = log2_(host_ni(host_offset_ni(table_idx)+idx_ni));
     }
-    host_inv_log_ni(table_idx) = 1.0/(host_log_ni(host_offset_ni(table_idx)+1) - host_log_ni(host_offset_ni(table_idx)+0));
+    host_inv_dlog_ni(table_idx) = 1.0/(host_log_ni(host_offset_ni(table_idx)+1) - host_log_ni(host_offset_ni(table_idx)+0));
   }
 
   //printf("Read yq.\n");
@@ -407,7 +407,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
     for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
       host_yi(host_offset_yi(table_idx)+idx_yi) = table_yi[idx_yi];
     }
-    host_inv_yi(table_idx) = 1.0/(host_yi(host_offset_yi(table_idx)+1) - host_yi(host_offset_yi(table_idx)+0));
+    host_inv_dyi(table_idx) = 1.0/(host_yi(host_offset_yi(table_idx)+1) - host_yi(host_offset_yi(table_idx)+0));
   }
 
   //printf("Read T.\n");
@@ -549,8 +549,8 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   // Copy from host to device
   Kokkos::deep_copy(nni, host_nni);
   Kokkos::deep_copy(nyi, host_nyi);
-  Kokkos::deep_copy(inv_log_ni, host_inv_log_ni);
-  Kokkos::deep_copy(inv_yi,     host_inv_yi);
+  Kokkos::deep_copy(inv_dlog_ni, host_inv_dlog_ni);
+  Kokkos::deep_copy(inv_dyi,     host_inv_dyi);
   Kokkos::deep_copy(Pmin,     host_Pmin);
   Kokkos::deep_copy(offset_ni,    host_offset_ni);
   Kokkos::deep_copy(offset_yi,    host_offset_yi);
@@ -568,7 +568,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   bool success = true;
   /// Create host mirrors of device arrays to read into, and copy
   HostArray1D<int>::HostMirror  host_nni = create_mirror_view(nni);
-  HostArray1D<Real>::HostMirror host_inv_log_ni = create_mirror_view(inv_log_ni);
+  HostArray1D<Real>::HostMirror host_inv_dlog_ni = create_mirror_view(inv_dlog_ni);
   HostArray1D<Real>::HostMirror host_Pmin = create_mirror_view(Pmin);
   HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni), host_offset_table = create_mirror_view(offset_table);
   HostArray1D<Real>::HostMirror host_ni = create_mirror_view(ni), host_log_ni = create_mirror_view(log_ni);
@@ -576,7 +576,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
 
   // Copy data from device to host
   Kokkos::deep_copy(host_nni, nni);
-  Kokkos::deep_copy(host_inv_log_ni, inv_log_ni);
+  Kokkos::deep_copy(host_inv_dlog_ni, inv_dlog_ni);
   Kokkos::deep_copy(host_Pmin, Pmin);
   Kokkos::deep_copy(host_offset_ni, offset_ni);
   Kokkos::deep_copy(host_offset_table, offset_table);
@@ -631,7 +631,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
       host_ni(host_offset_ni(table_idx)+idx_ni)     = table_ni[idx_ni];
       host_log_ni(host_offset_ni(table_idx)+idx_ni) = log2_(host_ni(host_offset_ni(table_idx)+idx_ni));
     }
-    host_inv_log_ni(table_idx) = 1.0/(host_log_ni(host_offset_ni(table_idx)+1) - host_log_ni(host_offset_ni(table_idx)+0));
+    host_inv_dlog_ni(table_idx) = 1.0/(host_log_ni(host_offset_ni(table_idx)+1) - host_log_ni(host_offset_ni(table_idx)+0));
   }
 
   //printf("Read T.\n");
@@ -756,7 +756,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
 
   // Copy from host to device
   Kokkos::deep_copy(nni, host_nni);
-  Kokkos::deep_copy(inv_log_ni, host_inv_log_ni);
+  Kokkos::deep_copy(inv_dlog_ni, host_inv_dlog_ni);
   Kokkos::deep_copy(Pmin,     host_Pmin);
   Kokkos::deep_copy(offset_ni,    host_offset_ni);
   Kokkos::deep_copy(offset_table, host_offset_table);
@@ -772,7 +772,7 @@ bool EOSMultiTable<LogPolicy>::ReadTSharedTableFromFile(std::string fname) {
   HostArray1D<Real>::HostMirror host_t_shared = create_mirror_view(t_shared), host_log_t_shared = create_mirror_view(log_t_shared);
 
   Kokkos::deep_copy(host_t_shared, t_shared);
-  Kokkos::deep_copy(host_log_t_shared, host_log_t_shared);
+  Kokkos::deep_copy(host_log_t_shared, log_t_shared);
 
   // Read subtable
   TableReader::Table subtable;
@@ -797,7 +797,8 @@ bool EOSMultiTable<LogPolicy>::ReadTSharedTableFromFile(std::string fname) {
       host_log_t_shared(idx_t) = log2_(host_t_shared(idx_t));
     }
   }
-  inv_log_t_shared = 1.0/(host_log_t_shared(1) - host_log_t_shared(0));
+  dlog_t_shared = host_log_t_shared(1) - host_log_t_shared(0);
+  inv_dlog_t_shared = 1.0/dlog_t_shared;
 
   Kokkos::deep_copy(t_shared,     host_t_shared);
   Kokkos::deep_copy(log_t_shared, host_log_t_shared);
