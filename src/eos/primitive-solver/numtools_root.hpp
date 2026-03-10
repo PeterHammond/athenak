@@ -105,6 +105,101 @@ class Root {
 
   // }}}
 
+  // FalsePositionModified {{{
+
+  //! \brief Find the root of a functor f using false position.
+  //
+  // Modified version of above algorithm to use different stopping conditions.
+  // Intended for use in MultiTable temperature solve.
+  // Tolerances are explicitly split into:
+  // \param[in]  ftol  Tolerance for f(x). Root is considered converged if |f(x)|<=ftol
+  // \param[in]  xtol  Tolerance for x. Root is considered converged if ub-lb<=xtol
+
+  template<class Functor, class ... Types>
+  KOKKOS_INLINE_FUNCTION
+  bool FalsePositionModified(Functor&& f, Real &lb, Real &ub, Real& x, Real ftol, Real xtol,
+                     Types ... args) const {
+    int side = 0;
+    Real ftest;
+    unsigned int count = 0;
+    //last_count = 0;
+    // Get our initial bracket.
+    Real flb = f(lb, args...);
+    Real fub = f(ub, args...);
+    Real xold;
+    x = lb;
+
+    // If the interval is already too narrow, we have the root.
+    if ((ub - lb) <= xtol) {
+      x = 0.5*(ub + lb);
+      return true;
+    }
+
+    // If one of the bounds is already within tolerance of the root, we have the root.
+    if (fabs(flb) <= ftol) {
+      x = lb;
+      return true;
+    } else if (fabs(fub) <= ftol) {
+      x = ub;
+      return true;
+    }
+
+    // If the root is not bounded by the initial interval, we cannot proceed.
+    if (flb*fub > 0) {
+      return false;
+    }
+
+    do {
+      xold = x;
+      // Calculate the new root position.
+      x = (fub*lb - flb*ub)/(fub - flb);
+      count++;
+      // Calculate f at the prospective root.
+      ftest = f(x,args...);
+      
+      // Check if new guess satisfies tolerance
+      if (fabs(ftest) <= ftol) {
+        return true;
+      }
+      // Check the sign of f. If f is on the same side as the lower bound, then we adjust
+      // the lower bound. Similarly, if f is on the same side as the upper bound, we
+      // adjust the upper bound. If ftest falls on the same side twice, we weight one of
+      // the sides to force the new root to fall on the other side. This allows us to
+      // whittle down both sides at once and get better average convergence.
+      if (ftest*flb >= 0) {
+        if (side == 1) {
+          Real m = 1. - ftest/flb;
+          fub = (m > 0) ? fub*m : 0.5*fub;
+          //fub /= 2.0;
+        }
+        flb = ftest;
+        lb = x;
+        side = 1;
+      } else {
+        if (side == -1) {
+          Real m = 1. - ftest/fub;
+          flb = (m > 0) ? flb*m : 0.5*flb;
+          //flb /= 2.0;
+        }
+        fub = ftest;
+        ub = x;
+        side = -1;
+      }
+
+      // Check the width of the interval against stopping condition
+      if ((ub-lb) <= xtol) {
+        x = 0.5*(ub+lb);
+        return true; 
+      }
+    } while (count < iterations);
+    //last_count = count;
+
+    // Return success if we're below the tolerance, otherwise report failure.
+    return (fabs(f(x, args...)) <= ftol) || ((ub-lb) <= xtol);
+  }
+
+  // }}}
+
   // Chandrupatla {{{
 
   //! \brief Find the root of a functor f using Chandrupatla's method
