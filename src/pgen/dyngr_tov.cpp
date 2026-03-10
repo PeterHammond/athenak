@@ -233,12 +233,15 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   int ncells1 = indcs.nx1 + 2*(indcs.ng);
   int ncells2 = (indcs.nx2 > 1) ? (indcs.nx2 + 2*(indcs.ng)) : 1;
   int ncells3 = (indcs.nx3 > 1) ? (indcs.nx3 + 2*(indcs.ng)) : 1;
+  std::cout << "ncellsx set." << std::endl;
   int nmb = pmbp->nmb_thispack;
+  std::cout << "nmb set." << std::endl;
   DvceArray4D<Real> a1, a2, a3;
+  std::cout << "ax created." << std::endl;
   Kokkos::realloc(a1, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a2, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a3, nmb, ncells3, ncells2, ncells1);
-  std::cout << "mag-potential storage created." << std::endl;
+  std::cout << "ax allocated." << std::endl;
 
   auto &nghbr = pmbp->pmb->nghbr;
   auto &mblev = pmbp->pmb->mb_lev;
