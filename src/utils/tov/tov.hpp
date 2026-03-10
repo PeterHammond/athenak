@@ -322,6 +322,7 @@ TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
   tov.alpha.template sync<DevExeSpace>();
   tov.P.template sync<DevExeSpace>();
 
+  std::cout << "TOV synced to device." << std::endl;
   return tov;
 }
 
