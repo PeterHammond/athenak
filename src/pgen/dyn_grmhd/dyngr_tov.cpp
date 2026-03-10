@@ -93,6 +93,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   // Use the TOV solver with the specified EOS.
   TOVEOS eos{pin};
   auto my_tov = tov::TOVStar::ConstructTOV(pin, eos);
+  std::cout << "TOV constructed." << std::endl;
 
 
   constexpr bool use_ye = tov::UsesYe<TOVEOS>;
@@ -104,6 +105,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     spec_name << "s" << i << "_atmosphere";
     yi_atmo[i] = pin->GetOrAddReal("mhd", spec_name.str(),0.5);
   }
+  std::cout << "Atmosphere set." << std::endl;
 
   //auto& u0_ = pmbp->pmhd->u0;
   auto& w0_ = pmbp->pmhd->w0;
@@ -128,6 +130,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   auto &adm = pmbp->padm->adm;
   auto &tov_ = my_tov;
   auto &eos_ = eos;
+  std::cout << "Captured vars for kernel." << std::endl;
   Kokkos::Random_XorShift64_Pool<> rand_pool64(pmbp->gids);
   par_for("pgen_tov1", DevExeSpace(), 0, nmb1, 0, (n3-1), 0, (n2-1), 0, (n1-1),
   KOKKOS_LAMBDA(int m, int k, int j, int i) {
@@ -246,6 +249,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     adm.vK_dd(m,1,1,k,j,i) = adm.vK_dd(m,1,2,k,j,i) = adm.vK_dd(m,2,2,k,j,i) = 0.0;
   });
 
+  std::cout << "'pgen_tov1' completed." << std::endl;
   // parse some parameters
   Real b_norm = pin->GetOrAddReal("problem", "b_norm", 0.0);
   Real pcut = pin->GetOrAddReal("problem", "pcut", 1e-6);
@@ -270,6 +274,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
 
   auto &nghbr = pmbp->pmb->nghbr;
   auto &mblev = pmbp->pmb->mb_lev;
+  std::cout << "B-field pars read." << std::endl;
 
   par_for("pgen_potential", DevExeSpace(), 0,nmb-1,ks,ke+1,js,je+1,is,ie+1,
   KOKKOS_LAMBDA(int m, int k, int j, int i) {
@@ -371,6 +376,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
                          A2(tov_, eos_, isotropic, pcut, magindex, x1f,xr,x3f));
     }
   });
+  std::cout << "'pgen_potential' completed." << std::endl;
 
   auto &b0 = pmbp->pmhd->b0;
   par_for("pgen_Bfc", DevExeSpace(), 0,nmb-1,ks,ke,js,je,is,ie,
@@ -470,6 +476,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "Defaulting to fixed polytropic EOS" << std::endl;
     SetupTOV<tov::PolytropeEOS>(pin, pmy_mesh_);
   }
+  std::cout << "'SetupTOV' completed." << std::endl;
 
   // Mesh block info for loop limits
   auto &indcs = pmy_mesh_->mb_indcs;
