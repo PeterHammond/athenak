@@ -151,7 +151,7 @@ class TabulatedEOS {
     }
 
 
-    std::cout << "Loaded table to host" << fname << std::endl
+    std::cout << "Loaded table to host: " << fname << std::endl
               << "  N = " << m_nn << ", n_species = " << n_species << std::endl
               << "  rho = [" << exp(lrho_min) << ", " << exp(lrho_max) << "]" << std::endl
               << "  P = [" << exp(lP_min) << ", " << exp(lP_max) << "]" << std::endl;
