@@ -358,7 +358,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
                        (mag_a2(m,k+1,j,i) - mag_a2(m,k,j,i))/dx3);
     b0.x2f(m,k,j,i) = b_norm*((mag_a1(m,k+1,j,i) - mag_a1(m,k,j,i))/dx3 -
                        (mag_a3(m,k,j,i+1) - mag_a3(m,k,j,i))/dx1);
-    b0.x3f(m,k,j,i) = b_norm*((a2(m,k,j,i+1) - mag_a2(m,k,j,i))/dx1 -
+    b0.x3f(m,k,j,i) = b_norm*((mag_a2(m,k,j,i+1) - mag_a2(m,k,j,i))/dx1 -
                        (mag_a1(m,k,j+1,i) - mag_a1(m,k,j,i))/dx2);
 
     // Include extra face-component at edge of block in each direction
