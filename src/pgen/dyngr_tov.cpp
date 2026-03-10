@@ -238,6 +238,7 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   std::cout << "nmb set." << std::endl;
   DvceArray4D<Real> a1, a2, a3;
   std::cout << "ax created." << std::endl;
+  std::cout << nmb << ", " << ncells1 << ", "  << ncells2 << ", "  << ncells3 << std::endl;
   Kokkos::realloc(a1, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a2, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a3, nmb, ncells3, ncells2, ncells1);
