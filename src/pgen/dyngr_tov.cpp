@@ -218,13 +218,16 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   Real b_norm = pin->GetOrAddReal("problem", "b_norm", 0.0);
   Real pcut = pin->GetOrAddReal("problem", "pcut", 1e-6);
   Real magindex = pin->GetOrAddReal("problem", "magindex", 2);
+  std::cout << "B-field pars read." << std::endl;
 
   // If use_pcut_rel = true, we take pcut to be a percentage of pmax rather than
   // an absolute cutoff
-  if (pin->GetOrAddBoolean("problem", "use_pcut_rel", false)) {
+  bool use_pcut_rel = pin->GetOrAddBoolean("problem", "use_pcut_rel", false);
+  if (use_pcut_rel) {
     Real pmax = eos_.template GetPFromRho<tov::LocationTag::Host>(tov_.rhoc);
     pcut = pcut * pmax;
   }
+  std::cout << "pcut adjusted." << std::endl;
 
   // compute vector potential over all faces
   int ncells1 = indcs.nx1 + 2*(indcs.ng);
@@ -235,10 +238,10 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   Kokkos::realloc(a1, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a2, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a3, nmb, ncells3, ncells2, ncells1);
+  std::cout << "mag-potential storage created." << std::endl;
 
   auto &nghbr = pmbp->pmb->nghbr;
   auto &mblev = pmbp->pmb->mb_lev;
-  std::cout << "B-field pars read." << std::endl;
 
   par_for("pgen_potential", DevExeSpace(), 0,nmb-1,ks,ke+1,js,je+1,is,ie+1,
   KOKKOS_LAMBDA(int m, int k, int j, int i) {
