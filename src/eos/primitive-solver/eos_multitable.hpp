@@ -527,6 +527,11 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       bool result = root.FalsePositionModified(RootFunctionW, lb, ub, w_fp, 1e-15, 1e-15, var, iv, ilo, lvar, dlvar, this);
+      if (!result) {
+        Real flb = RootFunctionW(lb, var, iv, ilo, lvar, dlvar, this);
+        Real fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
+        printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
+      }
       assert(result);
       
       // printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
