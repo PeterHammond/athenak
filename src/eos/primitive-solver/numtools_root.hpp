@@ -12,6 +12,7 @@
 
 #include <math.h>
 #include "ps_types.hpp"
+#include <cstdio>
 
 namespace NumTools {
 
