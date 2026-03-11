@@ -530,7 +530,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       if (!result) {
         Real flb = RootFunctionW(lb, var, iv, ilo, lvar, dlvar, this);
         Real fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
-        printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
+        Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
+        assert(result);
       }
       assert(result);
       
