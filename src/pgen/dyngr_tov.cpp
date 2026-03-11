@@ -57,7 +57,6 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   // Use the TOV solver with the specified EOS.
   TOVEOS eos{pin};
   auto my_tov = tov::TOVStar::ConstructTOV(pin, eos);
-  std::cout << "TOV constructed." << std::endl;
 
 
   constexpr bool use_ye = tov::UsesYe<TOVEOS>;
@@ -69,7 +68,6 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     spec_name << "s" << i << "_atmosphere";
     yi_atmo[i] = pin->GetOrAddReal("mhd", spec_name.str(),0.5);
   }
-  std::cout << "Atmosphere set." << std::endl;
 
   //auto& u0_ = pmbp->pmhd->u0;
   auto& w0_ = pmbp->pmhd->w0;
@@ -94,7 +92,6 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
   auto &adm = pmbp->padm->adm;
   auto &tov_ = my_tov;
   auto &eos_ = eos;
-  std::cout << "Captured vars for kernel." << std::endl;
   Kokkos::Random_XorShift64_Pool<> rand_pool64(pmbp->gids);
   par_for("pgen_tov1", DevExeSpace(), 0, nmb1, 0, (n3-1), 0, (n2-1), 0, (n1-1),
   KOKKOS_LAMBDA(int m, int k, int j, int i) {
@@ -213,12 +210,10 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     adm.vK_dd(m,1,1,k,j,i) = adm.vK_dd(m,1,2,k,j,i) = adm.vK_dd(m,2,2,k,j,i) = 0.0;
   });
 
-  std::cout << "'pgen_tov1' completed." << std::endl;
   // parse some parameters
   Real b_norm = pin->GetOrAddReal("problem", "b_norm", 0.0);
   Real pcut = pin->GetOrAddReal("problem", "pcut", 1e-6);
   Real magindex = pin->GetOrAddReal("problem", "magindex", 2);
-  std::cout << "B-field pars read." << std::endl;
 
   // If use_pcut_rel = true, we take pcut to be a percentage of pmax rather than
   // an absolute cutoff
@@ -227,22 +222,16 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     Real pmax = eos_.template GetPFromRho<tov::LocationTag::Host>(tov_.rhoc);
     pcut = pcut * pmax;
   }
-  std::cout << "pcut adjusted." << std::endl;
 
   // compute vector potential over all faces
   int ncells1 = indcs.nx1 + 2*(indcs.ng);
   int ncells2 = (indcs.nx2 > 1) ? (indcs.nx2 + 2*(indcs.ng)) : 1;
   int ncells3 = (indcs.nx3 > 1) ? (indcs.nx3 + 2*(indcs.ng)) : 1;
-  std::cout << "ncellsx set." << std::endl;
   int nmb = pmbp->nmb_thispack;
-  std::cout << "nmb set." << std::endl;
   DvceArray4D<Real> a1, a2, a3;
-  std::cout << "ax created." << std::endl;
-  std::cout << nmb << ", " << ncells1 << ", "  << ncells2 << ", "  << ncells3 << std::endl;
   Kokkos::realloc(a1, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a2, nmb, ncells3, ncells2, ncells1);
   Kokkos::realloc(a3, nmb, ncells3, ncells2, ncells1);
-  std::cout << "ax allocated." << std::endl;
 
   auto &nghbr = pmbp->pmb->nghbr;
   auto &mblev = pmbp->pmb->mb_lev;
@@ -344,7 +333,6 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
                          A2(tov_, eos_, isotropic, pcut, magindex, x1f,xr,x3f));
     }
   });
-  std::cout << "'pgen_potential' completed." << std::endl;
 
   auto &b0 = pmbp->pmhd->b0;
   par_for("pgen_Bfc", DevExeSpace(), 0,nmb-1,ks,ke,js,je,is,ie,
@@ -388,7 +376,6 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     w_by = 0.5*(b0.x2f(m,k,j,i) + b0.x2f(m,k,j+1,i));
     w_bz = 0.5*(b0.x3f(m,k,j,i) + b0.x3f(m,k+1,j,i));
   });
-  std::cout << "'pgen_Bfc' completed." << std::endl;
 }
 
 //----------------------------------------------------------------------------------------
@@ -429,7 +416,6 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "Defaulting to fixed polytropic EOS" << std::endl;
     SetupTOV<tov::PolytropeEOS>(pin, pmy_mesh_);
   }
-  std::cout << "'SetupTOV' completed." << std::endl;
 
   // Mesh block info for loop limits
   auto &indcs = pmy_mesh_->mb_indcs;
