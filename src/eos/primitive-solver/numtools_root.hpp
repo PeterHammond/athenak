@@ -202,7 +202,7 @@ class Root {
       Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
       return false;
     }
-    return ;
+    return false;
   }
 
   // }}}
