@@ -146,6 +146,7 @@ class Root {
 
     // If the root is not bounded by the initial interval, we cannot proceed.
     if (flb*fub > 0) {
+      Kokkos::printf("Root not bounded in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub)
       return false;
     }
 
@@ -195,7 +196,13 @@ class Root {
     //last_count = count;
 
     // Return success if we're below the tolerance, otherwise report failure.
-    return (fabs(f(x, args...)) <= ftol) || ((ub-lb) <= xtol);
+    if ((fabs(f(x, args...)) <= ftol) || ((ub-lb) <= xtol)) {
+      return true;
+    } else {
+      Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub)
+      return false;
+    }
+    return ;
   }
 
   // }}}
