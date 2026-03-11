@@ -156,7 +156,6 @@ void SetupTOV(ParameterInput *pin, Mesh* pmy_mesh_) {
     // Set hydrodynamic quantities
     //w0_(m,IDN,k,j,i) = fmax(rho, tov_.dfloor);
     //w0_(m,IPR,k,j,i) = fmax(p*(1. + p_pert), tov_.pfloor);
-    Kokkos::printf("mkji: %d, %d, %d, %d, rpvxyz: %e, %e, %e, %e, %e\n",m,k,j,i,rho,p*(1. + p_pert),vr*x1v/r,vr*x2v/r,vr*x3v/r);
     w0_(m,IDN,k,j,i) = rho;
     w0_(m,IPR,k,j,i) = p*(1. + p_pert);
     w0_(m,IVX,k,j,i) = vr*x1v/r;
