@@ -174,7 +174,6 @@ class TOVStar {
 template<class TOVEOS>
 TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
   TOVStar tov{pin};
-  std::cout << "TOV initialised." << std::endl;
 
   tov.pfloor = eos.template GetPFromRho<LocationTag::Host>(tov.dfloor);
 
@@ -183,7 +182,6 @@ TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
   Kokkos::realloc(tov.M, tov.npoints);
   Kokkos::realloc(tov.P, tov.npoints);
   Kokkos::realloc(tov.alpha, tov.npoints);
-  std::cout << "TOV storage created." << std::endl;
 
   // Set aliases
   auto &R = tov.R.h_view;
@@ -204,7 +202,6 @@ TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
   //P(0) = tov.kappa*pow(tov.rhoc, tov.gamma);
   //alp(0) = 1.0;
   alp(0) = 0.0;
-  std::cout << "TOV initial data set." << std::endl;
 
   // Integrate outward using RK4
   tov.n_r = 0;
@@ -259,7 +256,6 @@ TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
       break;
     }
   }
-  std::cout << "TOV integration complete." << std::endl;
 
   if (tov.n_r == 0) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
@@ -283,7 +279,6 @@ TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
   for (int i = 0; i <= n_r; i++) {
     alp(i) = exp(alp(i));
   }
-  std::cout << "TOV edge adjusted." << std::endl;
 
   // Rescale alpha so that it matches the Schwarzschild metric at the boundary.
   // We also need to rescale the isotropic radius to agree at the boundary.
@@ -296,7 +291,6 @@ TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
     alp(i) = alp(i)*scale;
     R_iso(i) = R_iso(i)*iso_scale;
   }
-  std::cout << "TOV metric adjusted." << std::endl;
 
   // Print out details of the calculation
   if (global_variable::my_rank == 0 && verbose) {
@@ -322,7 +316,6 @@ TOVStar TOVStar::ConstructTOV(ParameterInput *pin, TOVEOS& eos, bool verbose) {
   tov.alpha.template sync<DevExeSpace>();
   tov.P.template sync<DevExeSpace>();
 
-  std::cout << "TOV synced to device." << std::endl;
   return tov;
 }
 
