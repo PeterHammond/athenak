@@ -274,6 +274,8 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
         printf("table offset %d: %d\n",idx,host_offset_table(idx));
       }
+
+      printf("min_h: %e", min_h);
     } else {
       printf("Read err: %d\n", err);
       Kokkos::abort("Abort for read error!");
