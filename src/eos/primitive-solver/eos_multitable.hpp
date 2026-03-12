@@ -509,7 +509,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real ub = 1.0;
 
       // calc exponential interpolation parameters
-      Real lvar[MAX_TABLES], dlvar[MAX_TABLES]; // var_i(t) = exp(lvar[i] + w(t)*dlvar[i])
+      Real lvar[MAX_TABLES+1], dlvar[MAX_TABLES+1]; // var_i(t) = exp(lvar[i] + w(t)*dlvar[i])
                 // 3D Tables
       for (int i=0; i<n_tables_3D; ++i) {
         Real lvar_lb = (1.0-wn1[i]) * ((1.0-wy1[i]) * table(index3D(i, iv, in[i]+0, iy[i]+0, ilo))  +
@@ -537,18 +537,37 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         dlvar[i] = lvar_ub - lvar_lb;
       }
 
-      Real flb = RootFunctionW(lb, var, iv, ilo, lvar, dlvar, this);
-      Real fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
-      if (!(flb*fub<=0.0)) {
-        Kokkos::printf("Root not bound in FalsePositionModified: nb=%e, Y[0]=%e\n", nb, Y[0]);
-        Kokkos::printf("Root not bound in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
+      // Radiation
+      if (use_photons) {
+        Real lvar_lb;
+        Real lvar_ub;
+        if (iv==ECLOGP) {
+          lvar_lb = log2_(photonPressureConstant * pow(t_shared(ilo),4));
+          lvar_ub = log2_(photonPressureConstant * pow(t_shared(ihi),4));
+        } else if (iv==ECLOGE) {
+          lvar_lb = log2_(photonEnergyConstant * pow(t_shared(ilo),4));
+          lvar_ub = log2_(photonEnergyConstant * pow(t_shared(ihi),4));
+        }
+        lvar[n_tables_3D+n_tables_2D] = lvar_lb;
+        dlvar[n_tables_3D+n_tables_2D] = lvar_ub - lvar_lb;
       }
 
-      bool result = root.FalsePositionModified(RootFunctionW, lb, ub, w_fp, 1e-15, 1e-15, var, iv, ilo, lvar, dlvar, this);
+      Real flb = RootFunctionW(lb, var, iv, lvar, dlvar, this);
+      Real fub = RootFunctionW(ub, var, iv, lvar, dlvar, this);
+      if (!(flb*fub<=0.0)) {
+        Real flo_ = f_idx(ilo);
+        Real fhi_ = f_idx(ihi);
+        Kokkos::printf("Root not bound in TemperatureFromVar: nb=%e, Y[0]=%e\n", nb, Y[0]);
+        Kokkos::printf("Root not bound in TemperatureFromVar: f(%d)=%e, f(%d)=%e\n", ilo, flo_, ihi, fhi_);
+        Kokkos::printf("Root not bound in TemperatureFromVar: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
+      }
+
+      bool result = root.FalsePositionModified(RootFunctionW, lb, ub, w_fp, 1e-15, 1e-15, var, iv, lvar, dlvar, this);
       if (!result) {
-        flb = RootFunctionW(lb, var, iv, ilo, lvar, dlvar, this);
-        fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
+        flb = RootFunctionW(lb, var, iv, lvar, dlvar, this);
+        fub = RootFunctionW(ub, var, iv, lvar, dlvar, this);
         Kokkos::printf("Root not converged in FalsePositionModified: nb=%e, Y[0]=%e\n", nb, Y[0]);
+        Kokkos::printf("Root not bound in TemperatureFromVar: f(ilo)=%e, f(ihi)=%e\n", flo_, fhi_);
         Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
       }
       assert(result);
@@ -830,7 +849,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     class RootFunctorW {
       public:
         KOKKOS_INLINE_FUNCTION Real operator()(const Real wt, const Real var, 
-                                               const int iv, const int it, 
+                                               const int iv, 
                                                const Real *lvar, const Real *dlvar, 
                                                const EOSMultiTable* pparent) const {
           Real var_pt = 0.0;
@@ -846,12 +865,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
           }
 
           if (pparent->use_photons) {
-            Real t_current = pparent->exp2_(pparent->log_t_shared(it) + wt*pparent->dlog_t_shared);
-            if (iv==ECLOGP) {
-              var_pt += pparent->photonPressureConstant * pow(t_current,4);
-            } else if (iv==ECLOGE) {
-              var_pt += pparent->photonEnergyConstant * pow(t_current,4);
-            }
+            int i = pparent->n_tables_3D+pparent->n_tables_2D;
+            var_pt += pparent->exp2_(lvar[i] + wt*dlvar[i]);
           }
 
           return (var - var_pt)/var; // N.B error is expected to be relative
