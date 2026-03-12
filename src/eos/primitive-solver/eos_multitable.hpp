@@ -478,7 +478,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         }
       }
 
-      assert(flo*fhi <= 0);
       if (!(flo*fhi <= 0)) {
         Real flo_ = f_idx(0);
         Real fhi_ = f_idx(n_t_shared-1);
