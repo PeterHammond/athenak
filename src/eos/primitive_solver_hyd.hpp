@@ -146,14 +146,15 @@ class PrimitiveSolverHydro {
         std::exit(EXIT_FAILURE);
       }
 
+      // Set whether the EoS should add photons
+      bool use_photons = pin->GetOrAddBoolean(block, "use_photons", false);
+      ps.GetEOSMutable().SetUsePhotons(use_photons);
+      
       // Get table filename, then read the table,
       std::string mt_dir = pin->GetString(block, "multitable_directory");
       std::string mt_header = pin->GetString(block, "multitable_header");
       ps.GetEOSMutable().ReadTableFromFile(mt_dir,mt_header);
 
-      // Set whether the EoS should add photons
-      bool use_photons = pin->GetOrAddBoolean(block, "use_photons", false);
-      ps.GetEOSMutable().SetUsePhotons(use_photons);
 
       // Ensure table was read properly
       assert(ps.GetEOSMutable().IsInitialized());
