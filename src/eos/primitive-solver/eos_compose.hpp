@@ -402,7 +402,7 @@ class EOSCompOSE : public EOSPolicyInterface, public LogPolicy, public SupportsE
   /// Low level function, not intended for outside use
   KOKKOS_INLINE_FUNCTION Real temperature_from_var(int iv, Real var, Real n, Real Yq)
       const {
-    assert(false);
+    Kokkos::abort("Entered CompOSE temperature_from_var!");
     int in, iy;
     Real wn0, wn1, wy0, wy1;
     Real log_n = log2_(n);
