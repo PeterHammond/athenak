@@ -537,10 +537,17 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         dlvar[i] = lvar_ub - lvar_lb;
       }
 
+      Real flb = RootFunctionW(lb, var, iv, ilo, lvar, dlvar, this);
+      Real fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
+      if (!(flb*fub<=0.0)) {
+        Kokkos::printf("Root not bound in FalsePositionModified: nb=%e, Y[0]=%e\n", nb, Y[0]);
+        Kokkos::printf("Root not bound in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
+      }
+
       bool result = root.FalsePositionModified(RootFunctionW, lb, ub, w_fp, 1e-15, 1e-15, var, iv, ilo, lvar, dlvar, this);
       if (!result) {
-        Real flb = RootFunctionW(lb, var, iv, ilo, lvar, dlvar, this);
-        Real fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
+        flb = RootFunctionW(lb, var, iv, ilo, lvar, dlvar, this);
+        fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
         Kokkos::printf("Root not converged in FalsePositionModified: nb=%e, Y[0]=%e\n", nb, Y[0]);
         Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
       }
