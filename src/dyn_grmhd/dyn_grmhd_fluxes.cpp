@@ -26,7 +26,12 @@
 #include "dyn_grmhd/rsolvers/llf_dyn_grmhd.hpp"
 #include "dyn_grmhd/rsolvers/hlle_dyn_grmhd.hpp"
 // include PrimitiveSolver stuff
+#include "eos/primitive_solver_hyd.hpp"
 #include "eos/primitive-solver/idealgas.hpp"
+#include "eos/primitive-solver/eos_compose.hpp"
+#include "eos/primitive-solver/eos_hybrid.hpp"
+#include "eos/primitive-solver/eos_multitable.hpp"
+#include "eos/primitive-solver/piecewise_polytrope.hpp"
 #include "eos/primitive-solver/reset_floor.hpp"
 
 namespace dyngr {
