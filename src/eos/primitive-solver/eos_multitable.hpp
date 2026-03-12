@@ -567,7 +567,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         flb = RootFunctionW(lb, var, iv, lvar, dlvar, this);
         fub = RootFunctionW(ub, var, iv, lvar, dlvar, this);
         Kokkos::printf("Root not converged in FalsePositionModified: nb=%e, Y[0]=%e\n", nb, Y[0]);
-        Kokkos::printf("Root not bound in TemperatureFromVar: f(ilo)=%e, f(ihi)=%e\n", flo_, fhi_);
         Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
       }
       assert(result);
