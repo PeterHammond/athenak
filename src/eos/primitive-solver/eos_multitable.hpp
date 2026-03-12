@@ -116,6 +116,11 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       inv_dlog_t_shared = std::numeric_limits<Real>::quiet_NaN();
 
       Pmin_fac = 1.0e-10;
+      // We don't want to root solver to fail unless something goes horribly wrong.
+      // Worst case scenario is bisection every other step, so for tol=1e-15
+      // the maximum number of steps should be:
+      // log_2(10)*15*2 \approx 100
+      root.iterations = 100;
     }
 
 
