@@ -250,10 +250,9 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     if (use_photons) {
       Real min_p_photons = photonPressureConstant * pow(min_T,4);
       Real min_e_photons = photonEnergyConstant * pow(min_T,4);
-      Real min_h_photons = (min_p_photons+min_e_photons)/min_n;
+      Real min_h_photons = (min_p_photons+min_e_photons)/max_n;
       min_h += min_h_photons;
     }
-
 
     if (err<0) {
       initialised = true;
