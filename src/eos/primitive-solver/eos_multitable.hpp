@@ -475,9 +475,9 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       assert(flo*fhi <= 0);
       if (!(flo*fhi <= 0)) {
-        flo = f_idx(0);
-        fhi = f_idx(n_t_shared-1);
-        Kokkos::printf("Root not bounded in FalsePositionModified: f(ilo)=%e, f(ihi)=%e\n", flo, fhi);
+        Real flo_ = f_idx(0);
+        Real fhi_ = f_idx(n_t_shared-1);
+        Kokkos::printf("Root not bounded in TemperatureFromVar: f(ilo)=%e, f(ihi)=%e\n", flo_, fhi_);
       }
       assert(flo*fhi <= 0);
 

@@ -80,6 +80,11 @@ class EOSCompOSE : public EOSPolicyInterface, public LogPolicy, public SupportsE
     nu_2DNR_eps_lim  = 1.e-7;
     nu_2DNR_n_max    = 100;
     nu_bis_n_cut_max = 8;
+    // We don't want to root solver to fail unless something goes horribly wrong.
+    // Worst case scenario is bisection every other step, so for tol=1e-15
+    // the maximum number of steps should be:
+    // log_2(10)*15*2 \approx 100
+    root.iterations = 100;
   }
 
 /*
@@ -402,7 +407,6 @@ class EOSCompOSE : public EOSPolicyInterface, public LogPolicy, public SupportsE
   /// Low level function, not intended for outside use
   KOKKOS_INLINE_FUNCTION Real temperature_from_var(int iv, Real var, Real n, Real Yq)
       const {
-    Kokkos::abort("Entered CompOSE temperature_from_var!");
     int in, iy;
     Real wn0, wn1, wy0, wy1;
     Real log_n = log2_(n);
