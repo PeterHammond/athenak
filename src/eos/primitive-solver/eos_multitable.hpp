@@ -474,6 +474,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       assert(flo*fhi <= 0);
+      if (!(flo*fhi <= 0)) {
+        flo = f_idx(0);
+        fhi = f_idx(n_t_shared-1);
+        Kokkos::printf("Root not bounded in FalsePositionModified: f(ilo)=%e, f(ihi)=%e\n", flo, fhi);
+      }
+      assert(flo*fhi <= 0);
 
       // printf("- %d %d %e %e %e %e\n",ilo,ihi,log_t_union(ilo),log_t_union(ihi),f(log_t_union(ilo)),f(log_t_union(ihi)));
 
@@ -532,8 +538,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         Real fub = RootFunctionW(ub, var, iv, ilo, lvar, dlvar, this);
         Kokkos::printf("Root not converged in FalsePositionModified: nb=%e, Y[0]=%e\n", nb, Y[0]);
         Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
-        assert(result);
       }
+      assert(result);
       
       // printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
       /*
