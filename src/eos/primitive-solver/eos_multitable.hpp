@@ -284,34 +284,17 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     /// Temperature from energy density
     KOKKOS_INLINE_FUNCTION Real TemperatureFromE(const Real nb, const Real e, const Real *Y) const {
       assert (initialised);
-      Real e_min = MinimumEnergy(nb, Y);
-      Real e_max = MaximumEnergy(nb, Y);
-      if (e <= e_min) {
-        return min_T;
-      } else if (e >= e_max) {
-        return max_T;
-      } else {
-        return TemperatureFromVar(ECLOGE, e, nb, Y);
-      }
+      return TemperatureFromVar(ECLOGE, e, nb, Y);
     }
 
     /// Calculate the temperature using.
     KOKKOS_INLINE_FUNCTION Real TemperatureFromP(const Real nb, const Real p, const Real *Y) const {
       assert (initialised);
-      Real p_min = MinimumPressure(nb, Y);
-      Real p_max = MaximumPressure(nb, Y);
-      if (p <= p_min) {
-        return min_T;
-      } else if (p >= p_max) {
-        return max_T;
-      } else {
-        Real p_target = p;
-        
-        for (int i=0; i<n_tables_3D+n_tables_2D; ++i) {
-          p_target += Pmin(i);
-        }
-        return TemperatureFromVar(ECLOGP, p_target, nb, Y);
+      Real p_target = p;
+      for (int i=0; i<n_tables_3D+n_tables_2D; ++i) {
+        p_target += Pmin(i);
       }
+      return TemperatureFromVar(ECLOGP, p_target, nb, Y);
     }
 
   protected:
@@ -452,6 +435,17 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       Real flo = f_idx(ilo);
       Real fhi = f_idx(ihi);
+
+      // This should replace the checks agains the minima and maxima in
+      // the calling functions TemperatureFromP and TemperatureFromE.
+      // f(idx) = (var_target - var(T_idx)) / var_target
+      // if f(ilo) <= 0 then var_target < var(T=T_min), 
+      // equally if f(ihi) >= 0 then var_target > var(T=T_max), 
+      if (flo<=0.0) {
+        return t_shared(0);
+      } else if (fhi>=0.0) {
+        return t_shared(n_t_shared-1);
+      }
       
       /*
       Real var_lo, var_hi;
