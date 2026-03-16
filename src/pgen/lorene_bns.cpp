@@ -275,11 +275,6 @@ void SetupBNS(ParameterInput *pin, Mesh* pmy_mesh_) {
     }
   }
 
-  // m,k,j,i,p:3, 8, 47, 13, 1.167811990921e-05
-  if (global_variable::my_rank == 0) {
-  std::cout<<"m,k,j,i,host_w0(p): 35, 8, 47, 13, "<<host_w0(35, IPR, 8, 47, 13)<<std::endl;
-  }
-
   if (global_variable::my_rank == 0) {
     std::cout << "Host mirrors filled." << std::endl;
   }
