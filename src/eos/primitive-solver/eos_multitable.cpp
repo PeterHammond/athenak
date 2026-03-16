@@ -215,6 +215,7 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     Kokkos::deep_copy(n_weights, host_n_weights);
 
     // Minimum enthalpy will be updated by each subtable
+    // TODO change this to be read from header file
     min_h = 0.0;
 
     // Read this first so we can check that other tables match
