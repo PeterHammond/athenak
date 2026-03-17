@@ -371,7 +371,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         ndpdn += ni*eval_at_int(i, ECDPDN, in, it, wn1, wt1);
         dpdT += eval_at_int(i, ECDPDT, in, it, wn1, wt1);
         dsdn += ni*eval_at_int(i, ECDSDN, in, it, wn1, wt1) - eval_at_int(i, ECENTD, in, it, wn1, wt1);
-        dsdT += eval_at_int(table_idx, ECDSDT, in, it, wn1, wt1);
+        dsdT += eval_at_int(i, ECDSDT, in, it, wn1, wt1);
       }
 
       // Photons
