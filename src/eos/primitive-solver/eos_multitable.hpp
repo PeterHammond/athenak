@@ -428,20 +428,20 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return Energy(nb, max_T, Y);
     }
 
-    /// Temperature from energy density
+    /// Temperature from energy density.
     KOKKOS_INLINE_FUNCTION Real TemperatureFromE(const Real nb, const Real e, const Real *Y) const {
       assert (initialised);
-      return TemperatureFromVar(ECLOGE, e, nb, Y);
+      return TemperatureFromVar<ECLOGE>(e, nb, Y);
     }
 
-    /// Calculate the temperature using.
+    /// Calculate the from pressure.
     KOKKOS_INLINE_FUNCTION Real TemperatureFromP(const Real nb, const Real p, const Real *Y) const {
       assert (initialised);
       Real p_target = p;
       for (int i=0; i<n_tables_3D+n_tables_2D; ++i) {
         p_target += Pmin(i);
       }
-      return TemperatureFromVar(ECLOGP, p_target, nb, Y);
+      return TemperatureFromVar<ECLOGP>(p_target, nb, Y);
     }
 
   protected:
@@ -455,9 +455,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     bool ReadTSharedTableFromFile(std::string table_name);
 
     // Temperature inversion
-    KOKKOS_INLINE_FUNCTION Real TemperatureFromVar(const int iv, const Real var, const Real nb, const Real *Y) const {
+    // Template over which variable is being solved
+    template<int iv>
+    KOKKOS_INLINE_FUNCTION Real TemperatureFromVar(const Real var, const Real nb, const Real *Y) const {
       assert(initialised);
-      assert(iv==ECLOGP || iv==ECLOGE);
 
       // Indicies and weights for densities and compositions can be 
       // precalculated
@@ -489,31 +490,52 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real flo = f_idx(ilo);
       Real fhi = f_idx(ihi);
 
-      // TODO: Clean up checks for poorly/un- constrained roots
-      // This should replace the checks agains the minima and maxima in
-      // the calling functions TemperatureFromP and TemperatureFromE.
-      // f(idx) = (var_target - var(T_idx)) / var_target
-      // if f(ilo) <= 0 then var_target < var(T=T_min), 
-      // equally if f(ihi) >= 0 then var_target > var(T=T_max)
-      if (flo<=0.0) {
-        return t_shared(0);
-      } else if (fhi>=0.0) {
-        return t_shared(n_t_shared-1);
-      }
+      if (!(flo*fhi <= 0.0)) {
+        // The root is not bounded by T_min and T_max, but not all hope
+        // is lost
 
-      while (flo*fhi>0){
-        if (ilo == ihi - 1) {
-          break;
-        } else {
-          ilo += 1;
-          flo = f_idx(ilo);
+        if constexpr(iv==ECLOGE) {
+          // Energy(T) should be monotonic, so we can check the signs of 
+          // the function to see if the root is outside the bounds of the 
+          // table.
+          // f(idx) = (var_target - var(T_idx)) / var_target
+          // if f(ilo) <= 0 then var_target < var(T=T_min), 
+          // equally if f(ihi) >= 0 then var_target > var(T=T_max)
+          if (flo<=0.0) {
+            return t_shared(0);
+          } else if (fhi>=0.0) {
+            return t_shared(n_t_shared-1);
+          }
+        } else if constexpr(iv==ECLOGP) {
+          // Pressure may not be monotonic, so first we sweep the whole
+          // temperature axis to see if we can find some valid bounds
+          while (!(flo*fhi <= 0)){
+            if (ilo == ihi - 1) {
+              // We swept the whole table and didn't find a root, now we
+              // can check the edges to see if they imply the existence
+              // of a root beyond the table
+              ilo = 0;
+              flo = f_idx(ilo);
+              if (flo<=0.0) {
+                return t_shared(0);
+              } else if (fhi>=0.0) {
+                return t_shared(n_t_shared-1);
+              }
+              break;
+            } else {
+              ilo += 1;
+              flo = f_idx(ilo);
+            }
+          }
         }
       }
-
+      
+      // If we don't have a bounded root at this point then we complain
       if (!(flo*fhi <= 0)) {
         Real flo_ = f_idx(0);
         Real fhi_ = f_idx(n_t_shared-1);
-        Kokkos::printf("Root not bounded in TemperatureFromVar: f(ilo)=%e, f(ihi)=%e\n", flo_, fhi_);
+        Kokkos::printf("Root not bound in TemperatureFromVar: nb=%e, Y[0]=%e\n", nb, Y[0]);
+        Kokkos::printf("Root not bound in TemperatureFromVar: f(ilo)=%e, f(ihi)=%e\n", flo_, fhi_);
       }
       assert(flo*fhi <= 0);
 
@@ -569,10 +591,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       if (use_photons) {
         Real lvar_lb;
         Real lvar_ub;
-        if (iv==ECLOGP) {
+        if constexpr(iv==ECLOGP) {
           lvar_lb = log2_(photonPressureConstant * pow(t_shared(ilo),4));
           lvar_ub = log2_(photonPressureConstant * pow(t_shared(ihi),4));
-        } else if (iv==ECLOGE) {
+        } else if constexpr(iv==ECLOGE) {
           lvar_lb = log2_(photonEnergyConstant * pow(t_shared(ilo),4));
           lvar_ub = log2_(photonEnergyConstant * pow(t_shared(ihi),4));
         }
