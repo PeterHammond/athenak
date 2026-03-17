@@ -131,15 +131,39 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     KOKKOS_INLINE_FUNCTION Real Energy(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
       Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
 
       // 3D tables
       for (int i=0; i<n_tables_3D; ++i) {
-        result += PartialEnergyDensity3D(i,nb,T,Y);
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += exp2_(eval_at_inty(i, ECLOGE, in, it, iy, wn1, wt1, wy1));
       }
         
       // 2D tables
-        for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
-        result += PartialEnergyDensity2D(i,nb,T,Y);
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += exp2_(eval_at_int(i, ECLOGE, in, it, wn1, wt1));
       }
 
       // Photons
@@ -154,15 +178,39 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     KOKKOS_INLINE_FUNCTION Real Pressure(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
       Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
 
       // 3D Tables
       for (int i=0; i<n_tables_3D; ++i) {
-        result += PartialPressure3D(i,nb,T,Y);
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += exp2_(eval_at_inty(i, ECLOGP, in, it, iy, wn1, wt1, wy1)) - Pmin(i);
       }
 
       // 2D Tables
       for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
-        result += PartialPressure2D(i,nb,T,Y);
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += exp2_(eval_at_int(i, ECLOGP, in, it, wn1, wt1)) - Pmin(i);
       }
 
       // Photons
@@ -177,15 +225,39 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     KOKKOS_INLINE_FUNCTION Real Entropy(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
       Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
 
       // 3D Tables
       for (int i=0; i<n_tables_3D; ++i) {
-        result += PartialEntropyDensity3D(i,nb,T,Y);
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += eval_at_inty(i, ECENTD, in, it, iy, wn1, wt1, wy1);
       }
 
       // 2D Tables
       for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
-        result += PartialEntropyDensity2D(i,nb,T,Y);
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += eval_at_int(i, ECENTD, in, it, wn1, wt1);
       }
 
       // Photons
@@ -199,44 +271,119 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     /// Calculate the enthalpy per baryon using.
     KOKKOS_INLINE_FUNCTION Real Enthalpy(const Real nb, const Real T, const Real *Y) const {
-      Real const P = Pressure(nb, T, Y);
-      Real const e = Energy(nb, T, Y);
-      return (P + e)/nb;
+      assert(initialised);
+      Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
+
+      // 3D Tables
+      for (int i=0; i<n_tables_3D; ++i) {
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += exp2_(eval_at_inty(i, ECLOGP, in, it, iy, wn1, wt1, wy1)) - Pmin(i);
+        result += exp2_(eval_at_inty(i, ECLOGE, in, it, iy, wn1, wt1, wy1));
+      }
+
+      // 2D Tables
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += exp2_(eval_at_int(i, ECLOGP, in, it, wn1, wt1)) - Pmin(i);
+        result += exp2_(eval_at_int(i, ECLOGE, in, it, wn1, wt1));
+      }
+
+      // Photons
+      if (use_photons) {
+        result += (photonPressureConstant + photonEnergyConstant) * pow(T,4);
+      }
+
+      return result/nb;
     }
 
     /// Calculate the sound speed.
     KOKKOS_INLINE_FUNCTION Real SoundSpeed(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
-      Real h = Enthalpy(nb, T, Y);
-      Real dpdn = 0.0; // (ni/nb)*dPi/dni = dPi/dnb
+      // N.B. all the extra nb factors cancel in the final eqn for cs2
+      Real h = 0.0;     // h = p+e N.B. NOT (p+e)/nb
+      Real ndpdn = 0.0; // nb * (ni/nb)*dPi/dni = nb * dPi/dnb
       Real dpdT = 0.0; // dPi/dT
       Real dsdn = 0.0; // ni*dsi/dni - si = nb^2 * dSi/dnb
       Real dsdT = 0.0; // dsi/dT = nb * dSi/dT
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
 
       // 3D Tables
       for (int i=0; i<n_tables_3D; ++i) {
-        dpdn += PartialDPDN3D(i,nb,T,Y);
-        dpdT += PartialDPDT3D(i,nb,T,Y);
-        dsdn += PartialDSDN3D(i,nb,T,Y);
-        dsdT += PartialDSDT3D(i,nb,T,Y);
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        h += exp2_(eval_at_inty(i, ECLOGP, in, it, iy, wn1, wt1, wy1)) - Pmin(i);
+        h += exp2_(eval_at_inty(i, ECLOGE, in, it, iy, wn1, wt1, wy1));
+
+        ndpdn += ni*eval_at_inty(i, ECDPDN, in, it, iy, wn1, wt1, wy1);
+        dpdT += eval_at_inty(i, ECDPDT, in, it, iy, wn1, wt1, wy1);
+        dsdn += ni*eval_at_inty(i, ECDSDN, in, it, iy, wn1, wt1, wy1) - eval_at_inty(i, ECENTD, in, it, iy, wn1, wt1, wy1);
+        dsdT += eval_at_inty(i, ECDSDT, in, it, iy, wn1, wt1, wy1);
       }
 
       // 2D Tables
       for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
-        dpdn += PartialDPDN2D(i,nb,T,Y);
-        dpdT += PartialDPDT2D(i,nb,T,Y);
-        dsdn += PartialDSDN2D(i,nb,T,Y);
-        dsdT += PartialDSDT2D(i,nb,T,Y);
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        h += exp2_(eval_at_int(i, ECLOGP, in, it, wn1, wt1)) - Pmin(i);
+        h += exp2_(eval_at_int(i, ECLOGE, in, it, wn1, wt1));
+
+        ndpdn += ni*eval_at_int(i, ECDPDN, in, it, wn1, wt1);
+        dpdT += eval_at_int(i, ECDPDT, in, it, wn1, wt1);
+        dsdn += ni*eval_at_int(i, ECDSDN, in, it, wn1, wt1) - eval_at_int(i, ECENTD, in, it, wn1, wt1);
+        dsdT += eval_at_int(table_idx, ECDSDT, in, it, wn1, wt1);
       }
 
       // Photons
       if (use_photons) {
+        h += (photonPressureConstant + photonEnergyConstant) * pow(T,4);
+
         dpdT += 4.0 * photonPressureConstant * pow(T,3.0);
         dsdn -= photonEntropyConstant * pow(T,3.0);
         dsdT += 3.0 * photonEntropyConstant * pow(T,2.0);
       }
 
-      Real cs2 = (dpdn - dpdT*dsdn/(nb*dsdT))/h;
+      Real cs2 = (ndpdn - dpdT*dsdn/dsdT)/h;
       return Kokkos::sqrt(cs2);
     }
 
@@ -309,6 +456,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
 
     // Evaluation of subtables
+    /* N.B. These have been factored out
     KOKKOS_INLINE_FUNCTION Real PartialPressure3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
       Real ni, yi;
       GetPartialInputs3D(table_idx, nb, Y, ni, yi);
@@ -396,6 +544,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       GetPartialInputs2D(table_idx, nb, Y, ni);
       return eval_at_nt(table_idx, ECDSDT, ni, T);
     }
+    */
 
     // Temperature inversion
     KOKKOS_INLINE_FUNCTION Real TemperatureFromVar(const int iv, const Real var, const Real nb, const Real *Y) const {
@@ -412,8 +561,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
         weight_idx_ln(i, &(wn1[i]), &(in[i]), log2_(ni));
         weight_idx_yi(i, &(wy1[i]), &(iy[i]), yi);
-
-        // printf("%d %e %e %e %e\n",i,nb,Y[0],ni,yi);
       }
 
       for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
@@ -421,8 +568,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         GetPartialInputs2D(i, nb, Y, ni);
 
         weight_idx_ln(i, &(wn1[i]), &(in[i]), log2_(ni));
-
-        // printf("%d %e %e %e\n",i,nb,Y[0],ni);
       }
       
       // TODO Fix
@@ -563,27 +708,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         Kokkos::printf("Root not converged in FalsePositionModified: f(%e)=%e, f(%e)=%e\n", lb, flb, ub, fub);
       }
       assert(result);
-      
-      // printf("- %e %e %e %e %e %e\n",lb,ub,lt_fp,lt_fp - log_t_offset,exp2_(lt_fp - log_t_offset),f(lt_fp - log_t_offset));
-      /*
-      Real var_Tinit;
-      if (iv==ECLOGP) {
-        Real p_min_offset = 0.0;
-        var_Tinit = log2_(Pressure(nb, 0.2, Y));
-      } else if (iv==ECLOGE) {
-        var_Tinit = log2_(Energy(nb, 0.2, Y));
-      }
-
-      Real var_Tsolve;
-      Real Tsolve = exp2_(lt_fp - log_t_offset);
-      if (iv==ECLOGP) {
-        var_Tsolve = log2_(Pressure(nb, Tsolve, Y));
-      } else if (iv==ECLOGE) {
-        var_Tsolve = log2_(Energy(nb, Tsolve, Y));
-      }
-
-      printf("%d %e %e %e %e %e %e %d\n", iv, var, var_Tsolve, var_Tinit, nb, Y[0], exp2_(lt_fp - log_t_offset), result);
-      */
 
       return exp2_(log_t_shared(ilo) + w_fp*dlog_t_shared);
     }
@@ -595,8 +719,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       GetPartialYi(table_idx, Y, Yi);
       yi = Yi/Ni;
       ni = Ni*nb;
-      // yi = Kokkos::max(Kokkos::min(yi,this->yi(offset_yi(table_idx)+nyi(table_idx)-1)),this->yi(offset_yi(table_idx)));
-      // ni = Kokkos::max(Kokkos::min(ni,this->ni(offset_ni(table_idx)+nni(table_idx)-1)),this->ni(offset_ni(table_idx)));
       return;
     }
 
@@ -604,7 +726,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real Ni;
       GetPartialNi(table_idx, Y,Ni);
       ni = Ni*nb;
-      // ni = Kokkos::max(Kokkos::min(ni,this->ni(offset_ni(table_idx)+nni(table_idx)-1)),this->ni(offset_ni(table_idx)));
       return;
     }
 
@@ -638,8 +759,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       weight_idx_ln(table_idx, &wn1, &in, ln);
       weight_idx_yi(table_idx, &wy1, &iy, yi);
-      weight_idx_lt(table_idx, &wt1, &it, lt);
+      weight_idx_lt(&wt1, &it, lt);
 
+      return eval_at_inty(table_idx, iv, in, it, iy, wn1, wt1, wy1);
+    }
+
+    KOKKOS_INLINE_FUNCTION Real eval_at_inty(const int table_idx, const int iv, const int in, const int it, const int iy, const Real wn1, const Real wt1, const Real wy1) const {
       return
         (1.0-wn1) * ((1.0-wy1) * ((1.0-wt1) * table(index3D(table_idx, iv, in+0, iy+0, it+0))   +
                                        wt1  * table(index3D(table_idx, iv, in+0, iy+0, it+1)))  +
@@ -656,8 +781,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real wn1, wt1;
 
       weight_idx_ln(table_idx, &wn1, &in, ln);
-      weight_idx_lt(table_idx, &wt1, &it, lt);
+      weight_idx_lt(&wt1, &it, lt);
 
+      return eval_at_int(table_idx, iv, in, it, wn1, wt1);
+    }
+
+    KOKKOS_INLINE_FUNCTION Real eval_at_int(const int table_idx, const int iv, const int in, const int it, const Real wn1, const Real wt1) const {
       return
         (1.0-wn1) * ((1.0-wt1) * table(index2D(table_idx, iv, in+0, it+0))   +
                           wt1  * table(index2D(table_idx, iv, in+0, it+1)))  +
@@ -695,7 +824,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void weight_idx_lt(const int table_idx, Real *w1, int *it, const Real lt) const {
+    KOKKOS_INLINE_FUNCTION void weight_idx_lt(Real *w1, int *it, const Real lt) const {
       if (lt<=log_t_shared(0)) {
         *it = 0;
         *w1 = 0.0;
@@ -710,41 +839,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     KOKKOS_INLINE_FUNCTION int index3D(const int table_idx, const int iv, const int in, const int iy, const int it) const {
-      // return offset_table(table_idx) + iv*(nni(table_idx)*nyi(table_idx)*nt(table_idx)) + in*(nyi(table_idx)*nt(table_idx)) + iy*(nt(table_idx)) + it;
       return offset_table(table_idx) + it + n_t_shared*(iy + nyi(table_idx)*(in + nni(table_idx)*iv));
     }
 
     KOKKOS_INLINE_FUNCTION int index2D(const int table_idx, const int iv, const int in, const int it) const {
-      // return offset_table(table_idx) + iv*(nni(table_idx)*nt(table_idx)) + in*(nt(table_idx)) + it;
       return offset_table(table_idx) + it + n_t_shared*(in + nni(table_idx)*iv);
     }
-
-    /*
-    KOKKOS_INLINE_FUNCTION void test_temperature_recovery(Real nb, Real T, Real *Y) const {
-      Real pressure = Pressure(nb, T, Y);
-      Real energy   = Energy(nb, T, Y);
-
-      Real T_p = TemperatureFromP(nb, pressure, Y);
-      Real T_e = TemperatureFromE(nb, energy, Y);
-
-      Real p_new = Pressure(nb, T_p, Y);
-      Real e_new = Energy(nb, T_e, Y);
-
-      Real T_err_p = T_p - T;
-      Real T_err_e = T_e - T;
-
-      Real p_err = p_new - pressure;
-      Real e_err = e_new - energy;
-
-      printf("Temperature recovery test at: nb=%e, T=%e, Ye=%f\n", nb, T, Y[0]);
-      printf("TemperatureFromP: p=%e, T=%e, p(T)=%e\n", pressure, T_p, p_new);
-      printf("abserr(T)=%e, relerr(T)=%e, abserr(p)=%e, relerr(p)=%e\n", T_err_p, T_err_p/T, p_err, p_err/pressure);
-      printf("TemperatureFromE: e=%e, T=%e, e(T)=%e\n", energy, T_e, e_new);
-      printf("abserr(T)=%e, relerr(T)=%e, abserr(e)=%e, relerr(e)=%e\n", T_err_e, T_err_e/T, e_err, e_err/energy);
-
-      return;
-    }
-    */
 
     // Minimum enthalpy per baryon
     Real min_h;
