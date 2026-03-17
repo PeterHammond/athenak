@@ -13,7 +13,7 @@
 ///           log ni, log t, and yj. 
 
 /// For the avoidance of doubt, we use 'nb' to refer to the total 
-/// conserved baryon number density, and 'n' for the number density in 
+/// conserved baryon number density, and 'ni' for the number density in 
 /// each subtable. 3D tables are stored first, then 2D.
 
 #include <string>
@@ -454,104 +454,13 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     bool Read3DTableFromFile(std::string table_name, int table_idx);
     bool ReadTSharedTableFromFile(std::string table_name);
 
-
-    // Evaluation of subtables
-    /* N.B. These have been factored out
-    KOKKOS_INLINE_FUNCTION Real PartialPressure3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni, yi;
-      GetPartialInputs3D(table_idx, nb, Y, ni, yi);
-      return exp2_(eval_at_nty(table_idx, ECLOGP, ni, T, yi)) - Pmin(table_idx);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialPressure2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni;
-      GetPartialInputs2D(table_idx, nb, Y, ni);
-      return exp2_(eval_at_nt(table_idx, ECLOGP, ni, T)) - Pmin(table_idx);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialEnergyDensity3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni, yi;
-      GetPartialInputs3D(table_idx, nb, Y, ni, yi);
-      return exp2_(eval_at_nty(table_idx, ECLOGE, ni, T, yi));
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialEnergyDensity2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni;
-      GetPartialInputs2D(table_idx, nb, Y, ni);
-      return exp2_(eval_at_nt(table_idx, ECLOGE, ni, T));
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialEntropyDensity3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni, yi;
-      GetPartialInputs3D(table_idx, nb, Y, ni, yi);
-      return eval_at_nty(table_idx, ECENTD, ni, T, yi);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialEntropyDensity2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni;
-      GetPartialInputs2D(table_idx, nb, Y, ni);
-      return eval_at_nt(table_idx, ECENTD, ni, T);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDPDN3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni, yi;
-      GetPartialInputs3D(table_idx, nb, Y, ni, yi);
-      return (ni/nb)*eval_at_nty(table_idx, ECDPDN, ni, T, yi);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDPDN2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni;
-      GetPartialInputs2D(table_idx, nb, Y, ni);
-      return (ni/nb)*eval_at_nt(table_idx, ECDPDN, ni, T);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDPDT3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni, yi;
-      GetPartialInputs3D(table_idx, nb, Y, ni, yi);
-      return eval_at_nty(table_idx, ECDPDT, ni, T, yi);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDPDT2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni;
-      GetPartialInputs2D(table_idx, nb, Y, ni);
-      return eval_at_nt(table_idx, ECDPDT, ni, T);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDSDN3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni, yi;
-      GetPartialInputs3D(table_idx, nb, Y, ni, yi);
-      Real s    = eval_at_nty(table_idx, ECENTD, ni, T, yi);
-      Real dsdn = eval_at_nty(table_idx, ECDSDN, ni, T, yi);
-      return ni*dsdn - s;
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDSDN2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni;
-      GetPartialInputs2D(table_idx, nb, Y, ni);
-      Real s    = eval_at_nt(table_idx, ECENTD, ni, T);
-      Real dsdn = eval_at_nt(table_idx, ECDSDN, ni, T);
-      return ni*dsdn - s;
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDSDT3D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni, yi;
-      GetPartialInputs3D(table_idx, nb, Y, ni, yi);
-      return eval_at_nty(table_idx, ECDSDT, ni, T, yi);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real PartialDSDT2D(const int table_idx, const Real nb, const Real T, const Real *Y) const {
-      Real ni;
-      GetPartialInputs2D(table_idx, nb, Y, ni);
-      return eval_at_nt(table_idx, ECDSDT, ni, T);
-    }
-    */
-
     // Temperature inversion
     KOKKOS_INLINE_FUNCTION Real TemperatureFromVar(const int iv, const Real var, const Real nb, const Real *Y) const {
       assert(initialised);
       assert(iv==ECLOGP || iv==ECLOGE);
 
-      // Indicies and weights
+      // Indicies and weights for densities and compositions can be 
+      // precalculated
       int in[MAX_TABLES], iy[MAX_TABLES];
       Real wn1[MAX_TABLES], wy1[MAX_TABLES];
 
@@ -570,7 +479,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         weight_idx_ln(i, &(wn1[i]), &(in[i]), log2_(ni));
       }
       
-      // TODO Fix
       auto f_idx = [=](int t_idx) {
         return RootFunctionIdx(t_idx, var, iv, in, iy, wn1, wy1, this);
       };
@@ -581,35 +489,20 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       Real flo = f_idx(ilo);
       Real fhi = f_idx(ihi);
 
+      // TODO: Clean up checks for poorly/un- constrained roots
       // This should replace the checks agains the minima and maxima in
       // the calling functions TemperatureFromP and TemperatureFromE.
       // f(idx) = (var_target - var(T_idx)) / var_target
       // if f(ilo) <= 0 then var_target < var(T=T_min), 
-      // equally if f(ihi) >= 0 then var_target > var(T=T_max), 
+      // equally if f(ihi) >= 0 then var_target > var(T=T_max)
       if (flo<=0.0) {
         return t_shared(0);
       } else if (fhi>=0.0) {
         return t_shared(n_t_shared-1);
       }
-      
-      /*
-      Real var_lo, var_hi;
-      if (iv==0) {
-        var_lo = log2_(Pressure(nb, t_union(ilo), Y));
-        var_hi = log2_(Pressure(nb, t_union(ihi), Y));
-      } else if (iv==1) {
-        var_lo = log2_(Energy(nb, t_union(ilo), Y));
-        var_hi = log2_(Energy(nb, t_union(ihi), Y));
-      }
-
-      printf("%d %e %e %e %e %e %d %d %e %e %e %e\n",iv,var,var_lo,var_hi,nb,Y[0],ilo,ihi,lt_lo,lt_hi,flo,fhi);
-      */
 
       while (flo*fhi>0){
         if (ilo == ihi - 1) {
-          // if (abs(fhi) < abs(flo)) {
-          //   return exp2_(lt_hi);
-          // }
           break;
         } else {
           ilo += 1;
@@ -624,8 +517,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
       assert(flo*fhi <= 0);
 
-      // printf("- %d %d %e %e %e %e\n",ilo,ihi,log_t_union(ilo),log_t_union(ihi),f(log_t_union(ilo)),f(log_t_union(ihi)));
-
       while (ihi - ilo > 1) {
         int ip = ilo + (ihi - ilo)/2;
         Real fp = f_idx(ip);
@@ -638,8 +529,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         }
       }
 
-      // printf("- %d %d %e %e %e %e\n",ilo,ihi,log_t_union(ilo),log_t_union(ihi),f(log_t_union(ilo)),f(log_t_union(ihi)));
-
       assert(ihi - ilo == 1);
 
       Real w_fp; // Solution to be calculated
@@ -648,7 +537,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       // calc exponential interpolation parameters
       Real lvar[MAX_TABLES+1], dlvar[MAX_TABLES+1]; // var_i(t) = exp(lvar[i] + w(t)*dlvar[i])
-                // 3D Tables
+      
+      // 3D Tables
       for (int i=0; i<n_tables_3D; ++i) {
         Real lvar_lb = (1.0-wn1[i]) * ((1.0-wy1[i]) * table(index3D(i, iv, in[i]+0, iy[i]+0, ilo))  +
                                             wy1[i]  * table(index3D(i, iv, in[i]+0, iy[i]+1, ilo))) +
@@ -690,6 +580,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         dlvar[n_tables_3D+n_tables_2D] = lvar_ub - lvar_lb;
       }
 
+      // As we switch from one method of calculating the root to another,
+      // make sure the thing is still bounded
       Real flb = RootFunctionW(lb, var, iv, lvar, dlvar, this);
       Real fub = RootFunctionW(ub, var, iv, lvar, dlvar, this);
       if (!(flb*fub<=0.0)) {
@@ -701,6 +593,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       bool result = root.FalsePositionModified(RootFunctionW, lb, ub, w_fp, 1e-15, 1e-15, var, iv, lvar, dlvar, this);
+
+      // Complain if root-solve was unsuccessful
       if (!result) {
         flb = RootFunctionW(lb, var, iv, lvar, dlvar, this);
         fub = RootFunctionW(ub, var, iv, lvar, dlvar, this);
@@ -745,6 +639,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
+    /* These have been factored out
     KOKKOS_INLINE_FUNCTION Real eval_at_nty(const int table_idx, const int vi, const Real ni, const Real T, const Real Yi) const {
       return eval_at_lnty(table_idx, vi, log2_(ni), log2_(T), Yi);
     }
@@ -764,6 +659,17 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return eval_at_inty(table_idx, iv, in, it, iy, wn1, wt1, wy1);
     }
 
+    KOKKOS_INLINE_FUNCTION Real eval_at_lnt(const int table_idx, const int iv, const Real ln, const Real lt) const {
+      int in, it;
+      Real wn1, wt1;
+
+      weight_idx_ln(table_idx, &wn1, &in, ln);
+      weight_idx_lt(&wt1, &it, lt);
+
+      return eval_at_int(table_idx, iv, in, it, wn1, wt1);
+    }
+    */
+
     KOKKOS_INLINE_FUNCTION Real eval_at_inty(const int table_idx, const int iv, const int in, const int it, const int iy, const Real wn1, const Real wt1, const Real wy1) const {
       return
         (1.0-wn1) * ((1.0-wy1) * ((1.0-wt1) * table(index3D(table_idx, iv, in+0, iy+0, it+0))   +
@@ -774,16 +680,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
                                        wt1  * table(index3D(table_idx, iv, in+1, iy+0, it+1)))  +
                           wy1  * ((1.0-wt1) * table(index3D(table_idx, iv, in+1, iy+1, it+0))   +
                                        wt1  * table(index3D(table_idx, iv, in+1, iy+1, it+1))));
-    }
-
-    KOKKOS_INLINE_FUNCTION Real eval_at_lnt(const int table_idx, const int iv, const Real ln, const Real lt) const {
-      int in, it;
-      Real wn1, wt1;
-
-      weight_idx_ln(table_idx, &wn1, &in, ln);
-      weight_idx_lt(&wt1, &it, lt);
-
-      return eval_at_int(table_idx, iv, in, it, wn1, wt1);
     }
 
     KOKKOS_INLINE_FUNCTION Real eval_at_int(const int table_idx, const int iv, const int in, const int it, const Real wn1, const Real wt1) const {
@@ -897,7 +793,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     Real dlog_t_shared;
     Real inv_dlog_t_shared;
 
-    // TODO Fix
     /// The root solvers.
     /// This calculates the root at a given temperature index
     class RootFunctorIdx {
