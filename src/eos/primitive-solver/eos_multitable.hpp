@@ -692,10 +692,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     KOKKOS_INLINE_FUNCTION void weight_idx_ln(const int table_idx, Real *w1, int *in, const Real ln) const {
       int offset = offset_ni(table_idx);
-      if (ln<=log_ni(offset)) {
+      if (!(ln>log_ni(offset))) { // x <= xmin -> !(x > xmin)
         *in = 0;
         *w1 = 0.0;
-      } else if (ln>=log_ni(offset+nni(table_idx)-1)) {
+      } else if (!(ln<log_ni(offset+nni(table_idx)-1))) { // x >= xmin -> !(x < xmax)
         *in = nni(table_idx)-2;
         *w1 = 1.0;
       } else {
@@ -707,10 +707,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     KOKKOS_INLINE_FUNCTION void weight_idx_yi(const int table_idx, Real *w1, int *iy, const Real yi) const {
       int offset = offset_yi(table_idx);
-      if (yi<=this->yi(offset)) {
+      if (!(yi>this->yi(offset))) {
         *iy = 0;
         *w1 = 0.0;
-      } else if (yi>=this->yi(offset+nyi(table_idx)-1)) {
+      } else if (!(yi<this->yi(offset+nyi(table_idx)-1))) {
         *iy = nyi(table_idx)-2;
         *w1 = 1.0;
       } else {
@@ -721,10 +721,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     KOKKOS_INLINE_FUNCTION void weight_idx_lt(Real *w1, int *it, const Real lt) const {
-      if (lt<=log_t_shared(0)) {
+      if (!(lt>log_t_shared(0))) {
         *it = 0;
         *w1 = 0.0;
-      } else if (lt>=log_t_shared(n_t_shared - 1)) {
+      } else if (!(lt<log_t_shared(n_t_shared - 1))) {
         *it = n_t_shared-2;
         *w1 = 1.0;
       } else{
