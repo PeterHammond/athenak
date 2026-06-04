@@ -282,14 +282,6 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       Kokkos::abort("Abort for read error!");
     }
   }
-
-  /*
-  Real test_nb = 0.16161616;
-  Real test_T  = 0.22222222;
-  Real* test_Ye = new Real[MAX_SPECIES];
-  test_Ye[0] = 0.0555555555;
-  test_temperature_recovery(test_nb,test_T,test_Ye);
-  */
  
   return;
 }
@@ -435,6 +427,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
 
   //printf("Read pressure.\n");
   { // Read pressure
+    // First we need to find the minimum pressure. TODO: add to table as scalar?
     Real * table_press = subtable["pressure"];
     Real Pmin_read = table_press[0];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
@@ -447,12 +440,14 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       }
     }
 
+    // Set the pressure offset
     if (Pmin_read<0.0) {
       host_Pmin(table_idx) = -Pmin_read * (1.0 + Pmin_fac);
     } else {
       host_Pmin(table_idx) = 0.0;
     }
 
+    // Now we can read log(p+p_min) into memory
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
@@ -550,6 +545,36 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
           size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECDSDT));
           Real dsdt_current = table_dsdt[idx_flat_input];
           host_table(idx_flat_table) = dsdt_current;
+        }
+      }
+    }
+  }
+
+  //printf("Read mu_ni.\n");
+  { // Read mu_ni
+    Real * table_muni = subtable["mu_ni"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
+        for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+          size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
+          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECMUNI));
+          Real muni_current = table_muni[idx_flat_input];
+          host_table(idx_flat_table) = muni_current;
+        }
+      }
+    }
+  }
+
+  //printf("Read mu_yi.\n");
+  { // Read mu_yi
+    Real * table_muyi = subtable["mu_yi"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
+        for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+          size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
+          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECMUYI));
+          Real muyi_current = table_muyi[idx_flat_input];
+          host_table(idx_flat_table) = muyi_current;
         }
       }
     }
@@ -659,6 +684,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
 
   //printf("Read pressure.\n");
   { // Read pressure
+    // First we need to find the minimum pressure. TODO: add to table as scalar?
     Real * table_press = subtable["pressure"];
     Real Pmin_read = table_press[0];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
@@ -669,12 +695,14 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
       }
     }
 
+    // Set the pressure offset
     if (Pmin_read<0.0) {
       host_Pmin(table_idx) = -Pmin_read * (1.0 + Pmin_fac);
     } else {
       host_Pmin(table_idx) = 0.0;
     }
 
+    // Now we can read log(p+p_min) into memory
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
@@ -759,6 +787,19 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
         size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECDSDT);
         Real dsdt_current = table_dsdt[idx_flat_input];
         host_table(idx_flat_table) = dsdt_current;
+      }
+    }
+  }
+
+  //printf("Read mu_ni.\n");
+  { // Read mu_ni
+    Real * table_muni = subtable["mu_ni"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+        size_t idx_flat_input = idx_t + ntemp*idx_ni;
+        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECMUNI);
+        Real muni_current = table_muni[idx_flat_input];
+        host_table(idx_flat_table) = muni_current;
       }
     }
   }
