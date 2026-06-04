@@ -804,6 +804,18 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     }
   }
 
+  //printf("Read mu_yi.\n");
+  { // 2D tables don't have mu_yi, but (TODO) the storage is there, so we NAN it for safety
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+        size_t idx_flat_input = idx_t + ntemp*idx_ni;
+        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECMUYI);
+        Real muyi_current = std::numeric_limits<Real>::quiet_NaN();
+        host_table(idx_flat_table) = muyi_current;
+      }
+    }
+  }
+
   // Copy from host to device
   Kokkos::deep_copy(nni, host_nni);
   Kokkos::deep_copy(inv_dlog_ni, host_inv_dlog_ni);
