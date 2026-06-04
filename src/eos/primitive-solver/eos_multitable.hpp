@@ -44,7 +44,9 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       ECDPDT  = 4,  //! derivative dp/dT [fm^3]
       ECDSDN  = 5,  //! derivative ds/dn [kb]
       ECDSDT  = 6,  //! derivative ds/dT [kb MeV^-1 fm^-3]
-      ECNVARS = 7
+      ECMUNI  = 7,  //! particle number chemical potential [MeV]
+      ECMUYI  = 8,  //! fraction chemical potential (only present in 3D tables) [MeV]
+      ECNVARS = 9
     };
 
     /// Read the table files.
