@@ -405,6 +405,95 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(Real nb, Real T, Real *Y);
     */
 
+    /// Calculate the scalar chemical potential
+    KOKKOS_INLINE_FUNCTION Real ScalarChemicalPotential(const Real nb, const Real T, const Real *Y, const int idx) const {
+      assert(initialised);
+      Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
+
+      // 3D Tables
+      for (int i=0; i<n_tables_3D; ++i) {
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += n_weights(i,idx)*eval_at_inty(i, ECMUNI, in, it, iy, wn1, wt1, wy1);
+        result += y_weights(i,idx)*eval_at_inty(i, ECMUYI, in, it, iy, wn1, wt1, wy1);
+      }
+
+      // 2D Tables
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += n_weights(i,idx)*eval_at_int(i, ECMUNI, in, it, wn1, wt1);
+      }
+
+      return result;
+    }
+
+    /// Calculate the effective/average baryon chemical potential
+    KOKKOS_INLINE_FUNCTION Real EffectiveBaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+      assert(initialised);
+      Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
+
+      // 3D Tables
+      for (int i=0; i<n_tables_3D; ++i) {
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        for (int idx=0; idx<n_species+1; ++idx) {
+          result += n_weights(i,idx)*eval_at_inty(i, ECMUNI, in, it, iy, wn1, wt1, wy1);
+          result += y_weights(i,idx)*eval_at_inty(i, ECMUYI, in, it, iy, wn1, wt1, wy1);
+        }
+      }
+
+      // 2D Tables
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        for (int idx=0; idx<n_species+1; ++idx) {
+          result += n_weights(i,idx)*eval_at_int(i, ECMUNI, in, it, wn1, wt1);
+        }
+      }
+
+      return result;
+    }
     /// Get the minimum enthalpy per baryon.
     KOKKOS_INLINE_FUNCTION Real MinimumEnthalpy() const {
       return min_h;
