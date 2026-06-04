@@ -394,16 +394,22 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return Energy(nb, T, Y)/(mb*nb) - 1;
     }
 
-    /* Chemical potentials are not yet implemented
-    /// Calculate the baryon chemical potential
-    KOKKOS_INLINE_FUNCTION Real BaryonChemicalPotential(Real nb, Real T, Real *Y);
+    /// Calculate the baryon chemical potential, assumed to be `true' baryon CP
+    KOKKOS_INLINE_FUNCTION Real BaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+      return ScalarChemicalPotential(nb, T, Y, 0);
+    }
 
     /// Calculate the charge chemical potential
-    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(Real nb, Real T, Real *Y);
+    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(Real nb, Real T, Real *Y) {
+      assert(initialised);
+      // This is not defined (yet?), return NAN
+      return std::numeric_limits<Real>::quiet_NaN();
+    }
 
     /// Calculate the electron-lepton chemical potential
-    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(Real nb, Real T, Real *Y);
-    */
+    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(const Real const nb, const Real T, const Real *Y) const {
+      return ScalarChemicalPotential(nb, T, Y, 1);
+    }
 
     /// Calculate the scalar chemical potential
     KOKKOS_INLINE_FUNCTION Real ScalarChemicalPotential(const Real nb, const Real T, const Real *Y, const int idx) const {
