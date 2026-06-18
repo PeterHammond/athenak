@@ -400,14 +400,14 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the charge chemical potential
-    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(Real nb, Real T, Real *Y) {
+    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(const Real nb, const Real T, const Real *Y) {
       assert(initialised);
       // This is not defined (yet?), return NAN
       return std::numeric_limits<Real>::quiet_NaN();
     }
 
     /// Calculate the electron-lepton chemical potential
-    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(const Real const nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
       return ScalarChemicalPotential(nb, T, Y, 1);
     }
 
