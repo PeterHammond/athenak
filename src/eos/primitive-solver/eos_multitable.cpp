@@ -40,7 +40,6 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       return;
     }
 
-    // TODO LOOP Read header file
     printf("Reading MultiTable header file: %s\n", (dname+fname).c_str());
     std::string line, name, value, comment;
     int nline = -1;
@@ -66,14 +65,13 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       ParseLine(line, name, value, comment);
       // printf("line: %d, name: %s, value: %s, comment: %s\n", nline, name.c_str(), value.c_str(), comment.c_str());
 
-
       if (name.compare(0,11,"n_3D_tables") == 0) {n_tables_3D = std::stoi(value); continue;}
       if (name.compare(0,11,"n_2D_tables") == 0) {n_tables_2D = std::stoi(value); continue;}
       if (name.compare(0,9,"n_species") == 0) {n_species = std::stoi(value); continue;}
       if (name.compare(0,4,"n_ni") == 0) {n_ni_full = std::stoi(value); continue;}
       if (name.compare(0,4,"n_yi") == 0) {n_yi_full = std::stoi(value); continue;}
-      if (name.compare(0,10,"n_t_shared") == 0) {n_t_shared = std::stoi(value); continue;}
-      if (name.compare(0,7,"n_table") == 0) {n_table_full = std::stoi(value); continue;}
+      if (name.compare(0,3,"n_t") == 0) {nt = std::stoi(value); continue;}
+      if (name.compare(0,7,"n_table") == 0) {n_table = std::stoi(value); continue;}
       if (name.compare(0,2,"mb") == 0) {mb = std::stod(value); continue;}
       if (name.compare(0,5,"min_n") == 0) {min_n = std::stod(value); continue;}
       if (name.compare(0,5,"max_n") == 0) {max_n = std::stod(value); continue;}
@@ -114,6 +112,7 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       }
 
     }
+
     file.close(); // Close header.
 
     if (n_tables_3D+n_tables_2D > MAX_TABLES) {
@@ -127,13 +126,14 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       abort();
       return;
     } else {
+      // Report successfully read header information
       printf("n_tables_3D:  %d\n",n_tables_3D);
       printf("n_tables_2D:  %d\n",n_tables_2D);
       printf("n_species:    %d\n",n_species);
       printf("n_ni_full:    %d\n",n_ni_full);
       printf("n_yi_full:    %d\n",n_yi_full);
-      printf("n_T:          %d\n",n_t_shared);
-      printf("n_table_full: %d\n",n_table_full);
+      printf("n_t:          %d\n",nt);
+      printf("n_table:      %d\n",n_table);
       printf("mb:           %e\n",mb);
       printf("min_n:        %e\n",min_n);
       printf("max_n:        %e\n",max_n);
@@ -175,7 +175,10 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     // offsets for start of each subtables data
     Kokkos::realloc(offset_ni,    n_tables_3D+n_tables_2D);
     Kokkos::realloc(offset_yi,    n_tables_3D);
-    Kokkos::realloc(offset_table, n_tables_3D+n_tables_2D);
+
+    // offsets and availibility of table data
+    Kokkos::realloc(offset_var,    n_tables_3D+n_tables_2D, ECNVARS);
+    Kokkos::realloc(available_var, n_tables_3D+n_tables_2D, ECNVARS);
 
     // <number density, log number density> for each subtable sequentially
     Kokkos::realloc(ni,     n_ni_full);
@@ -185,11 +188,11 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     Kokkos::realloc(yi, n_yi_full);
 
     // <temperature, log temperature> shared by all tables
-    Kokkos::realloc(t_shared,     n_t_shared);
-    Kokkos::realloc(log_t_shared, n_t_shared);
+    Kokkos::realloc(t_shared,     nt);
+    Kokkos::realloc(log_t_shared, nt);
 
-    // data for each subtable sequentially
-    Kokkos::realloc(table, ECNVARS*n_table_full);
+    // data for each table and variable sequentially
+    Kokkos::realloc(table, n_table);
 
     // weights for calculating ni and yi from nb and Y
     Kokkos::realloc(y_weights, n_tables_3D,             1+n_species);
@@ -215,7 +218,6 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     Kokkos::deep_copy(n_weights, host_n_weights);
 
     // Minimum enthalpy will be updated by each subtable
-    // TODO change this to be read from header file
     min_h = 0.0;
 
     // Read this first so we can check that other tables match
@@ -248,7 +250,7 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       }
     }
 
-    if (use_photons) {
+    if (add_photons) {
       Real min_p_photons = photonPressureConstant * pow(min_T,4);
       Real min_e_photons = photonEnergyConstant * pow(min_T,4);
       Real min_h_photons = (min_p_photons+min_e_photons)/max_n;
@@ -258,12 +260,40 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
     if (err<0) {
       initialised = true;
 
-      // Create some host copies to output some useful information
-      HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni), host_offset_yi = create_mirror_view(offset_yi), host_offset_table = create_mirror_view(offset_table);
-      Kokkos::deep_copy(host_offset_ni, offset_ni);
-      Kokkos::deep_copy(host_offset_yi, offset_yi);
-      Kokkos::deep_copy(host_offset_table, offset_table);
+      // Create a host copy
+      HostArray2D<bool>::HostMirror host_available_var = create_mirror_view(available_var);
+      Kokkos::deep_copy(host_available_var, available_var);
 
+      // We can only output chemical potentials if all tables have the necessary info
+      has_chemical_potentials = true;
+      for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
+        has_chemical_potentials = has_chemical_potentials && host_available_var(idx, ECMUNI);
+      }
+      for (int idx=0; idx<n_tables_3D; ++idx) {
+        has_chemical_potentials = has_chemical_potentials && host_available_var(idx, ECMUYI);
+      }
+
+      // We can only output neutrino variables (Y_fn, Y_fp, mu_n - mu_p) 
+      // if at least one table has the necessary info
+      bool has_Y_fn = false;
+      bool has_Y_fp = false;
+      bool has_mu_np = false;
+      for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
+        has_Y_fn = has_Y_fn || host_available_var(idx, ECYFN);
+        has_Y_fp = has_Y_fp || host_available_var(idx, ECYFN);
+        has_mu_np = has_mu_np || host_available_var(idx, ECMUNP);
+      }
+      has_neutrino_vars = has_Y_fn && has_Y_fp && has_mu_np;
+
+      // Print some diagnostic output to show a successful read
+      HostArray1D<int>::HostMirror  host_offset_ni     = create_mirror_view(offset_ni);
+      HostArray1D<int>::HostMirror  host_offset_yi     = create_mirror_view(offset_yi);
+      HostArray2D<int>::HostMirror  host_offset_var    = create_mirror_view(offset_var);
+
+      Kokkos::deep_copy(host_offset_ni,     offset_ni);
+      Kokkos::deep_copy(host_offset_yi,     offset_yi);
+      Kokkos::deep_copy(host_offset_var,    offset_var);
+      
       for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
         printf("ni offset %d: %d\n",idx,host_offset_ni(idx));
       }
@@ -273,7 +303,9 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       }
 
       for (int idx=0; idx<n_tables_3D+n_tables_2D; ++idx) {
-        printf("table offset %d: %d\n",idx,host_offset_table(idx));
+        for (int jdx=0; jdx<ECNVARS; ++jdx) {
+          printf("var offset, avail [%d, %d]: %d, %d\n",idx, jdx, host_offset_var(idx,jdx), host_available_var(idx,jdx));
+        }
       }
 
       printf("min_h: %e", min_h);
@@ -324,11 +356,17 @@ template<typename LogPolicy>
 bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_idx) {
   bool success = true;
   /// Create host mirrors of device arrays to read into, and copy
-  HostArray1D<int>::HostMirror  host_nni = create_mirror_view(nni), host_nyi = create_mirror_view(nyi);
-  HostArray1D<Real>::HostMirror host_inv_dlog_ni = create_mirror_view(inv_dlog_ni), host_inv_dyi = create_mirror_view(inv_dyi);
+  HostArray1D<int>::HostMirror  host_nni = create_mirror_view(nni);
+  HostArray1D<int>::HostMirror  host_nyi = create_mirror_view(nyi);
+  HostArray1D<Real>::HostMirror host_inv_dlog_ni = create_mirror_view(inv_dlog_ni);
+  HostArray1D<Real>::HostMirror host_inv_dyi = create_mirror_view(inv_dyi);
   HostArray1D<Real>::HostMirror host_Pmin = create_mirror_view(Pmin);
-  HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni), host_offset_yi = create_mirror_view(offset_yi), host_offset_table = create_mirror_view(offset_table);
-  HostArray1D<Real>::HostMirror host_ni = create_mirror_view(ni), host_log_ni = create_mirror_view(log_ni);
+  HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni);
+  HostArray1D<int>::HostMirror  host_offset_yi = create_mirror_view(offset_yi);
+  HostArray2D<int>::HostMirror  host_offset_var = create_mirror_view(offset_var);
+  HostArray2D<bool>::HostMirror host_available_var = create_mirror_view(available_var);
+  HostArray1D<Real>::HostMirror host_ni = create_mirror_view(ni);
+  HostArray1D<Real>::HostMirror host_log_ni = create_mirror_view(log_ni);
   HostArray1D<Real>::HostMirror host_yi = create_mirror_view(yi);
   HostArray1D<Real>::HostMirror host_table = create_mirror_view(table);
 
@@ -340,7 +378,8 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(host_Pmin, Pmin);
   Kokkos::deep_copy(host_offset_ni, offset_ni);
   Kokkos::deep_copy(host_offset_yi, offset_yi);
-  Kokkos::deep_copy(host_offset_table, offset_table);
+  Kokkos::deep_copy(host_offset_var, offset_var);
+  Kokkos::deep_copy(host_available_var, available_var);
   Kokkos::deep_copy(host_ni, ni);
   Kokkos::deep_copy(host_log_ni, log_ni);
   Kokkos::deep_copy(host_yi, yi);
@@ -365,6 +404,8 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   //printf("Read scalars.\n");
   auto& table_scalars = subtable.GetScalars();
   min_h += table_scalars.at("h_min");
+  int n_vars_expected = table_scalars.at("n_vars");
+  int n_data_expected = table_scalars.at("n_data");
 
   // Read dims
   //printf("Read dims.\n");
@@ -373,25 +414,81 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   host_nyi(table_idx) = point_info[1].second;
   int ntemp  = point_info[2].second;
   // TODO check temperature matches T_shared
-  if (ntemp != n_t_shared) {
+  if (ntemp != nt) {
     Kokkos::abort("Temperature axis does not match!");
   }
+  int n_data_per_var = host_nni(table_idx)*host_nyi(table_idx)*ntemp;
 
   if (table_idx==0) {
-    host_offset_ni(table_idx) = 0;
-    host_offset_yi(table_idx) = 0;
-    host_offset_table(table_idx) = 0;
+    host_offset_ni(table_idx)    = 0;
+    host_offset_yi(table_idx)    = 0;
+    host_offset_var(table_idx,0) = 0;
   }
 
-  if (table_idx!=(n_tables_3D+n_tables_2D-1)){
-    host_offset_ni(table_idx+1) = host_offset_ni(table_idx) + host_nni(table_idx);
-    if (table_idx!=(n_tables_3D-1)) {
-      host_offset_yi(table_idx+1) = host_offset_yi(table_idx) + host_nyi(table_idx);
+  // Check that the presence of variables is as expected, and set offsets
+  host_available_var(table_idx, ECLOGP) = subtable.HasField("pressure");
+  host_available_var(table_idx, ECLOGE) = subtable.HasField("energy");
+  host_available_var(table_idx, ECENTD) = subtable.HasField("entropy");
+  host_available_var(table_idx, ECDPDN) = subtable.HasField("dpdn");
+  host_available_var(table_idx, ECDPDT) = subtable.HasField("dpdt");
+  host_available_var(table_idx, ECDSDN) = subtable.HasField("dsdn");
+  host_available_var(table_idx, ECDSDT) = subtable.HasField("dsdt");
+  host_available_var(table_idx, ECMUNI) = subtable.HasField("mu_ni");
+  host_available_var(table_idx, ECMUYI) = subtable.HasField("mu_yi");
+  host_available_var(table_idx, ECMUNP) = subtable.HasField("mu_delta_np");
+  host_available_var(table_idx, ECYFN)  = subtable.HasField("Y_fn");
+  host_available_var(table_idx, ECYFP)  = subtable.HasField("Y_fp");
+
+  // First 7 variables are mandatory
+  for (int var_idx=0; var_idx<7; ++var_idx) {
+    if (!host_available_var(table_idx, var_idx)) {
+    printf("MultiTable 3D subtable %s, idx=%d, could not load variable %d!\n",fname.c_str(),table_idx,var_idx);
+    success = false;
+    return success;
     }
-    host_offset_table(table_idx+1) = host_offset_table(table_idx) + host_nni(table_idx)*host_nyi(table_idx)*ntemp*ECNVARS;
+  }
+
+  // Set storage offsets (first step)
+  for (int var_idx=1; var_idx<ECNVARS-1; ++var_idx) {
+    if (host_available_var(table_idx, var_idx)) {
+      host_offset_var(table_idx, var_idx+1) = host_offset_var(table_idx, var_idx) + n_data_per_var;
+    } else {
+      host_offset_var(table_idx, var_idx+1) = host_offset_var(table_idx, var_idx);
+    }
   }
   
+  // Go back and DEADBEEF the unused variables
+  int n_vars_present = 7;
+  for (int var_idx=7; var_idx<ECNVARS; ++var_idx) {
+    if (!host_available_var(table_idx, var_idx)) {
+      host_offset_var(table_idx, var_idx) = -1;
+    } else {
+      n_vars_present += 1;
+    }
+  }
 
+  // Abort of expected and found number of variables doesn't match
+  if (n_vars_present != n_vars_expected) {
+    printf("MultiTable 3D subtable %s, idx=%d, found an incorrect number, %d, of variables, %d!\n",fname.c_str(),table_idx,n_vars_present,n_vars_expected);
+    success = false;
+    return success;
+  }
+
+  // Set the starting offsets for the next table
+  if (table_idx!=(n_tables_3D+n_tables_2D-1)){
+    // tell next table where it can store its ni data
+    host_offset_ni(table_idx+1) = host_offset_ni(table_idx) + host_nni(table_idx);
+
+    if (table_idx!=(n_tables_3D-1)) {
+      // tell next table where it can store its yi data
+      host_offset_yi(table_idx+1) = host_offset_yi(table_idx) + host_nyi(table_idx);
+    }
+
+    // tell next table where it can store its variable data
+    host_offset_var(table_idx+1,0) = host_offset_var(table_idx,0) + n_data_expected;
+  }
+  
+  // Read the table parameters
   //printf("Read nb.\n");
   { // read nb
     Real * table_ni = subtable["ni"];
@@ -411,23 +508,13 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
     host_inv_dyi(table_idx) = 1.0/(host_yi(host_offset_yi(table_idx)+1) - host_yi(host_offset_yi(table_idx)+0));
   }
 
-  //printf("Read T.\n");
-  // No longer needed, all tables share a temperature axis, which is read separately
-  /*
-  { // read T
-    Real * table_t = subtable["t"];
-    for (size_t idx_t=0; idx_t<host_nt(table_idx); ++idx_t) {
-      host_t(host_offset_t(table_idx)+idx_t)     = table_t[idx_t];
-      host_log_t(host_offset_t(table_idx)+idx_t) = log2_(host_t(host_offset_t(table_idx)+idx_t));
-    }
-    
-    host_inv_log_t(table_idx) = 1.0/(host_log_t(host_offset_t(table_idx)+1) - host_log_t(host_offset_t(table_idx)+0));
-  }
-  */
+  // Read the table variables 
+  // We skip checks for mandatory variables, table read *should* have 
+  // already aborted if not present
 
   //printf("Read pressure.\n");
   { // Read pressure
-    // First we need to find the minimum pressure. TODO: add to table as scalar?
+    // First we need to find the minimum pressure.
     Real * table_press = subtable["pressure"];
     Real Pmin_read = table_press[0];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
@@ -452,7 +539,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECLOGP));
+          size_t idx_flat_table = host_offset_var(table_idx, ECLOGP) + idx_flat_input;
           Real p_current = table_press[idx_flat_input];
           host_table(idx_flat_table) = log2_(p_current + host_Pmin(table_idx));
         }
@@ -467,7 +554,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECLOGE));
+          size_t idx_flat_table = host_offset_var(table_idx, ECLOGE) + idx_flat_input;
           Real e_current = table_energy[idx_flat_input];
           host_table(idx_flat_table) = log2_(e_current);
         }
@@ -482,7 +569,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECENTD));
+          size_t idx_flat_table = host_offset_var(table_idx, ECENTD) + idx_flat_input;
           Real s_current = table_entropy[idx_flat_input];
           host_table(idx_flat_table) = s_current;
         }
@@ -497,7 +584,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECDPDN));
+          size_t idx_flat_table = host_offset_var(table_idx, ECDPDN) + idx_flat_input;
           Real dpdn_current = table_dpdn[idx_flat_input];
           host_table(idx_flat_table) = dpdn_current;
         }
@@ -512,7 +599,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECDPDT));
+          size_t idx_flat_table = host_offset_var(table_idx, ECDPDT) + idx_flat_input;
           Real dpdt_current = table_dpdt[idx_flat_input];
           host_table(idx_flat_table) = dpdt_current;
         }
@@ -527,7 +614,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECDSDN));
+          size_t idx_flat_table = host_offset_var(table_idx, ECDSDN) + idx_flat_input;
           Real dsdn_current = table_dsdn[idx_flat_input];
           host_table(idx_flat_table) = dsdn_current;
         }
@@ -542,7 +629,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECDSDT));
+          size_t idx_flat_table = host_offset_var(table_idx, ECDSDT) + idx_flat_input;
           Real dsdt_current = table_dsdt[idx_flat_input];
           host_table(idx_flat_table) = dsdt_current;
         }
@@ -551,13 +638,13 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   }
 
   //printf("Read mu_ni.\n");
-  { // Read mu_ni
+  if (host_available_var(table_idx, ECMUNI)) { // Read mu_ni
     Real * table_muni = subtable["mu_ni"];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECMUNI));
+          size_t idx_flat_table = host_offset_var(table_idx, ECMUNI) + idx_flat_input;
           Real muni_current = table_muni[idx_flat_input];
           host_table(idx_flat_table) = muni_current;
         }
@@ -566,15 +653,60 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   }
 
   //printf("Read mu_yi.\n");
-  { // Read mu_yi
+  if (host_available_var(table_idx, ECMUYI)) { // Read mu_yi
     Real * table_muyi = subtable["mu_yi"];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
         for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
           size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
-          size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_yi + host_nyi(table_idx)*(idx_ni + host_nni(table_idx)*ECMUYI));
+          size_t idx_flat_table = host_offset_var(table_idx, ECMUNI) + idx_flat_input;
           Real muyi_current = table_muyi[idx_flat_input];
           host_table(idx_flat_table) = muyi_current;
+        }
+      }
+    }
+  }
+
+  //printf("Read mu_n - mu_p.\n");
+  if (host_available_var(table_idx, ECMUNP)) { // Read mu_delta_np
+    Real * table_munp = subtable["mu_delta_np"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
+        for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+          size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
+          size_t idx_flat_table = host_offset_var(table_idx, ECMUNP) + idx_flat_input;
+          Real munp_current = table_munp[idx_flat_input];
+          host_table(idx_flat_table) = munp_current;
+        }
+      }
+    }
+  }
+
+  //printf("Read Y_fn.\n");
+  if (host_available_var(table_idx, ECYFN)) { // Read Y_fn
+    Real * table_Yfn = subtable["Y_fn"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
+        for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+          size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
+          size_t idx_flat_table = host_offset_var(table_idx, ECYFN) + idx_flat_input;
+          Real Yfn_current = table_Yfn[idx_flat_input];
+          host_table(idx_flat_table) = Yfn_current;
+        }
+      }
+    }
+  }
+
+  //printf("Read Y_fp.\n");
+  if (host_available_var(table_idx, ECYFP)) { // Read Y_fp
+    Real * table_Yfp = subtable["Y_fp"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_yi=0; idx_yi<host_nyi(table_idx); ++idx_yi) {
+        for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+          size_t idx_flat_input = idx_t + ntemp*(idx_yi + host_nyi(table_idx)*idx_ni);
+          size_t idx_flat_table = host_offset_var(table_idx, ECYFP) + idx_flat_input;
+          Real Yfp_current = table_Yfp[idx_flat_input];
+          host_table(idx_flat_table) = Yfp_current;
         }
       }
     }
@@ -586,9 +718,10 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(inv_dlog_ni, host_inv_dlog_ni);
   Kokkos::deep_copy(inv_dyi,     host_inv_dyi);
   Kokkos::deep_copy(Pmin,     host_Pmin);
-  Kokkos::deep_copy(offset_ni,    host_offset_ni);
-  Kokkos::deep_copy(offset_yi,    host_offset_yi);
-  Kokkos::deep_copy(offset_table, host_offset_table);
+  Kokkos::deep_copy(offset_ni,  host_offset_ni);
+  Kokkos::deep_copy(offset_yi,  host_offset_yi);
+  Kokkos::deep_copy(offset_var, host_offset_var);
+  Kokkos::deep_copy(available_var, host_available_var);
   Kokkos::deep_copy(ni,     host_ni);
   Kokkos::deep_copy(log_ni, host_log_ni);
   Kokkos::deep_copy(yi, host_yi);
@@ -604,8 +737,11 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   HostArray1D<int>::HostMirror  host_nni = create_mirror_view(nni);
   HostArray1D<Real>::HostMirror host_inv_dlog_ni = create_mirror_view(inv_dlog_ni);
   HostArray1D<Real>::HostMirror host_Pmin = create_mirror_view(Pmin);
-  HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni), host_offset_table = create_mirror_view(offset_table);
-  HostArray1D<Real>::HostMirror host_ni = create_mirror_view(ni), host_log_ni = create_mirror_view(log_ni);
+  HostArray1D<int>::HostMirror  host_offset_ni = create_mirror_view(offset_ni);
+  HostArray2D<int>::HostMirror  host_offset_var = create_mirror_view(offset_var);
+  HostArray2D<bool>::HostMirror host_available_var = create_mirror_view(available_var);
+  HostArray1D<Real>::HostMirror host_ni = create_mirror_view(ni);
+  HostArray1D<Real>::HostMirror host_log_ni = create_mirror_view(log_ni);
   HostArray1D<Real>::HostMirror host_table = create_mirror_view(table);
 
   // Copy data from device to host
@@ -613,7 +749,8 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(host_inv_dlog_ni, inv_dlog_ni);
   Kokkos::deep_copy(host_Pmin, Pmin);
   Kokkos::deep_copy(host_offset_ni, offset_ni);
-  Kokkos::deep_copy(host_offset_table, offset_table);
+  Kokkos::deep_copy(host_offset_var, offset_var);
+  Kokkos::deep_copy(host_available_var, available_var);
   Kokkos::deep_copy(host_ni, ni);
   Kokkos::deep_copy(host_log_ni, log_ni);
   Kokkos::deep_copy(host_table, table);
@@ -637,6 +774,8 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   //printf("Read scalars.\n");
   auto& table_scalars = subtable.GetScalars();
   min_h += table_scalars.at("h_min");
+  int n_vars_expected = table_scalars.at("n_vars");
+  int n_data_expected = table_scalars.at("n_data");
 
   // Read dims
   //printf("Read dims.\n");
@@ -644,18 +783,72 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   host_nni(table_idx) = point_info[0].second;
   int ntemp = point_info[1].second;
   // TODO check temperature matches T_shared
-  if (ntemp != n_t_shared) {
+  if (ntemp != nt) {
     Kokkos::abort("Temperature axis does not match!");
   }
+  int n_data_per_var = host_nni(table_idx)*ntemp;
   
   if (table_idx==0) {
-    host_offset_ni(table_idx) = 0;
-    host_offset_table(table_idx) = 0;
+    host_offset_ni(table_idx)    = 0;
+    host_offset_var(table_idx,0) = 0;
   }
 
+  // Check that the presence of variables is as expected, and set offsets
+  host_available_var(table_idx, ECLOGP) = subtable.HasField("pressure");
+  host_available_var(table_idx, ECLOGE) = subtable.HasField("energy");
+  host_available_var(table_idx, ECENTD) = subtable.HasField("entropy");
+  host_available_var(table_idx, ECDPDN) = subtable.HasField("dpdn");
+  host_available_var(table_idx, ECDPDT) = subtable.HasField("dpdt");
+  host_available_var(table_idx, ECDSDN) = subtable.HasField("dsdn");
+  host_available_var(table_idx, ECDSDT) = subtable.HasField("dsdt");
+  host_available_var(table_idx, ECMUNI) = subtable.HasField("mu_ni");
+  host_available_var(table_idx, ECMUYI) = subtable.HasField("mu_yi");
+  host_available_var(table_idx, ECMUNP) = subtable.HasField("mu_delta_np");
+  host_available_var(table_idx, ECYFN)  = subtable.HasField("Y_fn");
+  host_available_var(table_idx, ECYFP)  = subtable.HasField("Y_fp");
+
+  // First 7 variables are mandatory
+  for (int var_idx=0; var_idx<7; ++var_idx) {
+    if (!host_available_var(table_idx, var_idx)) {
+    printf("MultiTable 2D subtable %s, idx=%d, could not load variable %d!\n",fname.c_str(),table_idx,var_idx);
+    success = false;
+    return success;
+    }
+  }
+
+  // Set storage offsets (first step)
+  for (int var_idx=1; var_idx<ECNVARS-1; ++var_idx) {
+    if (host_available_var(table_idx, var_idx)) {
+      host_offset_var(table_idx, var_idx+1) = host_offset_var(table_idx, var_idx) + n_data_per_var;
+    } else {
+      host_offset_var(table_idx, var_idx+1) = host_offset_var(table_idx, var_idx);
+    }
+  }
+  
+  // Go back and DEADBEEF the unused variables
+  int n_vars_present = 7;
+  for (int var_idx=7; var_idx<ECNVARS; ++var_idx) {
+    if (!host_available_var(table_idx, var_idx)) {
+      host_offset_var(table_idx, var_idx) = -1;
+    } else {
+      n_vars_present += 1;
+    }
+  }
+
+  // Abort of expected and found number of variables doesn't match
+  if (n_vars_present != n_vars_expected) {
+    printf("MultiTable 2D subtable %s, idx=%d, found an incorrect number, %d, of variables, %d!\n",fname.c_str(),table_idx,n_vars_present,n_vars_expected);
+    success = false;
+    return success;
+  }
+
+  // Set the starting offsets for the next table
   if (table_idx!=(n_tables_3D+n_tables_2D-1)){
+    // tell next table where it can store its ni data
     host_offset_ni(table_idx+1) = host_offset_ni(table_idx) + host_nni(table_idx);
-    host_offset_table(table_idx+1) = host_offset_table(table_idx) + host_nni(table_idx)*ntemp*ECNVARS;
+
+    // tell next table where it can store its variable data
+    host_offset_var(table_idx+1,0) = host_offset_var(table_idx,0) + n_data_expected;
   }
 
   //printf("Read nb.\n");
@@ -668,23 +861,13 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     host_inv_dlog_ni(table_idx) = 1.0/(host_log_ni(host_offset_ni(table_idx)+1) - host_log_ni(host_offset_ni(table_idx)+0));
   }
 
-  //printf("Read T.\n");
-  // No longer needed, all tables share a temperature axis, which is read separately
-  /*
-  { // read T
-    Real * table_t = subtable["t"];
-    for (size_t idx_t=0; idx_t<host_nt(table_idx); ++idx_t) {
-      host_t(host_offset_t(table_idx)+idx_t)     = table_t[idx_t];
-      host_log_t(host_offset_t(table_idx)+idx_t) = log2_(host_t(host_offset_t(table_idx)+idx_t));
-    }
-    
-    host_inv_log_t(table_idx) = 1.0/(host_log_t(host_offset_t(table_idx)+1) - host_log_t(host_offset_t(table_idx)+0));
-  }
-  */
+  // Read the table variables 
+  // We skip checks for mandatory variables, table read *should* have 
+  // already aborted if not present
 
   //printf("Read pressure.\n");
   { // Read pressure
-    // First we need to find the minimum pressure. TODO: add to table as scalar?
+    // First we need to find the minimum pressure.
     Real * table_press = subtable["pressure"];
     Real Pmin_read = table_press[0];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
@@ -706,7 +889,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECLOGP);
+        size_t idx_flat_table = host_offset_var(table_idx, ECLOGP) + idx_flat_input;
         Real p_current = table_press[idx_flat_input];
         host_table(idx_flat_table) = log2_(p_current + host_Pmin(table_idx));
       }
@@ -719,7 +902,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECLOGE);
+        size_t idx_flat_table = host_offset_var(table_idx, ECLOGE) + idx_flat_input;
         Real e_current = table_energy[idx_flat_input];
         host_table(idx_flat_table) = log2_(e_current);
       }
@@ -732,7 +915,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECENTD);
+        size_t idx_flat_table = host_offset_var(table_idx, ECENTD) + idx_flat_input;
         Real s_current = table_entropy[idx_flat_input];
         host_table(idx_flat_table) = s_current;
       }
@@ -745,7 +928,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECDPDN);
+        size_t idx_flat_table = host_offset_var(table_idx, ECDPDN) + idx_flat_input;
         Real dpdn_current = table_dpdn[idx_flat_input];
         host_table(idx_flat_table) = dpdn_current;
       }
@@ -758,7 +941,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECDPDT);
+        size_t idx_flat_table = host_offset_var(table_idx, ECDPDT) + idx_flat_input;
         Real dpdt_current = table_dpdt[idx_flat_input];
         host_table(idx_flat_table) = dpdt_current;
       }
@@ -771,7 +954,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECDSDN);
+        size_t idx_flat_table = host_offset_var(table_idx, ECDSDN) + idx_flat_input;
         Real dsdn_current = table_dsdn[idx_flat_input];
         host_table(idx_flat_table) = dsdn_current;
       }
@@ -784,7 +967,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECDSDT);
+        size_t idx_flat_table = host_offset_var(table_idx, ECDSDT) + idx_flat_input;
         Real dsdt_current = table_dsdt[idx_flat_input];
         host_table(idx_flat_table) = dsdt_current;
       }
@@ -792,12 +975,12 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   }
 
   //printf("Read mu_ni.\n");
-  { // Read mu_ni
+  if (host_available_var(table_idx, ECMUNI)) { // Read mu_ni
     Real * table_muni = subtable["mu_ni"];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECMUNI);
+        size_t idx_flat_table = host_offset_var(table_idx, ECMUNI) + idx_flat_input;
         Real muni_current = table_muni[idx_flat_input];
         host_table(idx_flat_table) = muni_current;
       }
@@ -805,13 +988,53 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   }
 
   //printf("Read mu_yi.\n");
-  { // 2D tables don't have mu_yi, but (TODO) the storage is there, so we NAN it for safety
+  if (host_available_var(table_idx, ECMUYI)) { // 2D tables don't have mu_yi, so we should fail here instead
+    Real * table_muyi = subtable["mu_yi"];
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_table(table_idx) + idx_t + ntemp*(idx_ni + host_nni(table_idx)*ECMUYI);
-        Real muyi_current = std::numeric_limits<Real>::quiet_NaN();
+        size_t idx_flat_table = host_offset_var(table_idx, ECMUNI) + idx_flat_input;
+        Real muyi_current = table_muyi[idx_flat_input];
         host_table(idx_flat_table) = muyi_current;
+      }
+    }
+  }
+
+  //printf("Read mu_n - mu_p.\n");
+  if (host_available_var(table_idx, ECMUNP)) { // Read mu_delta_np
+    Real * table_munp = subtable["mu_delta_np"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+        size_t idx_flat_input = idx_t + ntemp*idx_ni;
+        size_t idx_flat_table = host_offset_var(table_idx, ECMUNP) + idx_flat_input;
+        Real munp_current = table_munp[idx_flat_input];
+        host_table(idx_flat_table) = munp_current;
+      }
+    }
+  }
+
+  //printf("Read Y_fn.\n");
+  if (host_available_var(table_idx, ECYFN)) { // Read Y_fn
+    Real * table_Yfn = subtable["Y_fn"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+        size_t idx_flat_input = idx_t + ntemp*idx_ni;
+        size_t idx_flat_table = host_offset_var(table_idx, ECYFN) + idx_flat_input;
+        Real Yfn_current = table_Yfn[idx_flat_input];
+        host_table(idx_flat_table) = Yfn_current;
+      }
+    }
+  }
+
+  //printf("Read Y_fp.\n");
+  if (host_available_var(table_idx, ECYFP)) { // Read Y_fp
+    Real * table_Yfp = subtable["Y_fp"];
+    for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
+      for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
+        size_t idx_flat_input = idx_t + ntemp*idx_ni;
+        size_t idx_flat_table = host_offset_var(table_idx, ECYFP) + idx_flat_input;
+        Real Yfp_current = table_Yfp[idx_flat_input];
+        host_table(idx_flat_table) = Yfp_current;
       }
     }
   }
@@ -820,11 +1043,13 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   Kokkos::deep_copy(nni, host_nni);
   Kokkos::deep_copy(inv_dlog_ni, host_inv_dlog_ni);
   Kokkos::deep_copy(Pmin,     host_Pmin);
-  Kokkos::deep_copy(offset_ni,    host_offset_ni);
-  Kokkos::deep_copy(offset_table, host_offset_table);
+  Kokkos::deep_copy(offset_ni,  host_offset_ni);
+  Kokkos::deep_copy(offset_var, host_offset_var);
+  Kokkos::deep_copy(available_var, host_available_var);
   Kokkos::deep_copy(ni,     host_ni);
   Kokkos::deep_copy(log_ni, host_log_ni);
   Kokkos::deep_copy(table, host_table);
+
   return success;
 }
 
@@ -854,7 +1079,7 @@ bool EOSMultiTable<LogPolicy>::ReadTSharedTableFromFile(std::string fname) {
   //printf("Read T.\n");
   { // read T
     Real * table_t = subtable["t"];
-    for (size_t idx_t=0; idx_t<n_t_shared; ++idx_t) {
+    for (size_t idx_t=0; idx_t<nt; ++idx_t) {
       host_t_shared(idx_t)     = table_t[idx_t];
       host_log_t_shared(idx_t) = log2_(host_t_shared(idx_t));
     }

@@ -44,9 +44,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       ECDPDT  = 4,  //! derivative dp/dT [fm^3]
       ECDSDN  = 5,  //! derivative ds/dn [kb]
       ECDSDT  = 6,  //! derivative ds/dT [kb MeV^-1 fm^-3]
-      ECMUNI  = 7,  //! particle number chemical potential [MeV]
-      ECMUYI  = 8,  //! fraction chemical potential (only present in 3D tables) [MeV]
-      ECNVARS = 9
+      ECMUNI  = 7,  //! particle number chemical potential (optional) [MeV]
+      ECMUYI  = 8,  //! fraction chemical potential (optional for 3D) [MeV]
+      ECMUNP  = 9,  //! neutron/proton chemical potential difference (optional) [MeV]
+      ECYFN   = 10, //! free neutron fraction (optional) []
+      ECYFP   = 11, //! free proton fraction (optional) []
+      ECNVARS = 12
     };
 
     /// Read the table files.
@@ -67,8 +70,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    KOKKOS_INLINE_FUNCTION void SetUsePhotons(const bool photons) {
-      use_photons = photons;
+    KOKKOS_INLINE_FUNCTION void SetAddPhotons(const bool photons) {
+      add_photons = photons;
       return;
     }
 
@@ -84,24 +87,27 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         nni("nni",1), nyi("nyi",1),
         inv_dlog_ni("inv_dlog_ni",1), inv_dyi("inv_dyi",1),
         Pmin("Pmin",1),
-        ni("ni",1), log_ni("log_ni",1),
-        yi("yi",1),
-        table("table", 1),
-        offset_ni("offset_ni", 1), offset_yi("offset_yi", 1), offset_table("offset_table", 1),
         y_weights("y_weights", 1, 1), n_weights("n_weights", 1, 1),
-        t_shared("T",1), log_t_shared("log_T",1) {
+        ni("ni", 1), log_ni("log_ni", 1),
+        yi("yi", 1),
+        t_shared("T",1), log_t_shared("log_T",1),
+        table("table", 1), 
+        offset_ni("offset_ni", 1), offset_yi("offset_yi", 1),
+        offset_var("offset_var", 1, 1), available_var("available_var", 1, 1) {
 
       initialised = false;
-      use_photons = false;
+      add_photons = false;
+      has_chemical_potentials = false;
+      has_neutrino_vars = false;
 
-      n_tables_2D  = 0;
-      n_tables_3D  = 0;
-      n_ni_full    = 0;
-      n_yi_full    = 0;
-      n_table_full = 0;
-      n_species    = 0;
-      n_t_shared   = 0;
-
+      n_species   = 0;
+      n_tables_2D = 0;
+      n_tables_3D = 0;
+      n_ni_full   = 0;
+      n_yi_full   = 0;
+      nt          = 0;
+      n_table     = 0;
+      
       eos_units = MakeNuclear();   
 
       min_h = std::numeric_limits<Real>::max();
@@ -169,7 +175,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       // Photons
-      if (use_photons) {
+      if (add_photons) {
         result += photonEnergyConstant * pow(T,4);
       }
 
@@ -216,7 +222,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       // Photons
-      if (use_photons) {
+      if (add_photons) {
         result += photonPressureConstant * pow(T,4);
       }
 
@@ -263,7 +269,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       // Photons
-      if (use_photons) {
+      if (add_photons) {
         result += photonEntropyConstant * pow(T,3);
       }
 
@@ -313,7 +319,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       // Photons
-      if (use_photons) {
+      if (add_photons) {
         result += (photonPressureConstant + photonEnergyConstant) * pow(T,4);
       }
 
@@ -377,7 +383,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       // Photons
-      if (use_photons) {
+      if (add_photons) {
         h += (photonPressureConstant + photonEnergyConstant) * pow(T,4);
 
         dpdT += 4.0 * photonPressureConstant * pow(T,3.0);
@@ -396,24 +402,28 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     /// Calculate the baryon chemical potential, assumed to be `true' baryon CP
     KOKKOS_INLINE_FUNCTION Real BaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+      assert(has_chemical_potentials);
       return ScalarChemicalPotential(nb, T, Y, 0);
     }
 
     /// Calculate the charge chemical potential
     KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(const Real nb, const Real T, const Real *Y) {
       assert(initialised);
+      assert(has_chemical_potentials);
       // This is not defined (yet?), return NAN
       return std::numeric_limits<Real>::quiet_NaN();
     }
 
     /// Calculate the electron-lepton chemical potential
     KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+      assert(has_chemical_potentials);
       return ScalarChemicalPotential(nb, T, Y, 1);
     }
 
     /// Calculate the scalar chemical potential
     KOKKOS_INLINE_FUNCTION Real ScalarChemicalPotential(const Real nb, const Real T, const Real *Y, const int idx) const {
       assert(initialised);
+      assert(has_chemical_potentials);
       Real result = 0.0;
       Real lt = log2_(T);
 
@@ -457,6 +467,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     /// Calculate the effective/average baryon chemical potential
     KOKKOS_INLINE_FUNCTION Real EffectiveBaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
       assert(initialised);
+      assert(has_chemical_potentials);
       Real result = 0.0;
       Real lt = log2_(T);
 
@@ -582,7 +593,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       };
 
       int ilo = 0;
-      int ihi = n_t_shared-1;
+      int ihi = nt-1;
 
       Real flo = f_idx(ilo);
       Real fhi = f_idx(ihi);
@@ -601,7 +612,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
           if (flo<=0.0) {
             return t_shared(0);
           } else if (fhi>=0.0) {
-            return t_shared(n_t_shared-1);
+            return t_shared(nt-1);
           }
         } else if constexpr(iv==ECLOGP) {
           // Pressure may not be monotonic, so first we sweep the whole
@@ -616,7 +627,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
               if (flo<=0.0) {
                 return t_shared(0);
               } else if (fhi>=0.0) {
-                return t_shared(n_t_shared-1);
+                return t_shared(nt-1);
               }
               break;
             } else {
@@ -630,7 +641,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       // If we don't have a bounded root at this point then we complain
       if (!(flo*fhi <= 0)) {
         Real flo_ = f_idx(0);
-        Real fhi_ = f_idx(n_t_shared-1);
+        Real fhi_ = f_idx(nt-1);
         Kokkos::printf("Root not bound in TemperatureFromVar: nb=%e, Y[0]=%e\n", nb, Y[0]);
         Kokkos::printf("Root not bound in TemperatureFromVar: f(ilo)=%e, f(ihi)=%e\n", flo_, fhi_);
       }
@@ -685,7 +696,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       }
 
       // Radiation
-      if (use_photons) {
+      if (add_photons) {
         Real lvar_lb;
         Real lvar_ub;
         if constexpr(iv==ECLOGP) {
@@ -758,37 +769,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return;
     }
 
-    /* These have been factored out
-    KOKKOS_INLINE_FUNCTION Real eval_at_nty(const int table_idx, const int vi, const Real ni, const Real T, const Real Yi) const {
-      return eval_at_lnty(table_idx, vi, log2_(ni), log2_(T), Yi);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real eval_at_nt(const int table_idx, const int vi, const Real ni, const Real T) const {
-      return eval_at_lnt(table_idx, vi, log2_(ni), log2_(T));
-    }
-
-    KOKKOS_INLINE_FUNCTION Real eval_at_lnty(const int table_idx, const int iv, const Real ln, const Real lt, const Real yi) const {
-      int in, iy, it;
-      Real wn1, wy1, wt1;
-
-      weight_idx_ln(table_idx, &wn1, &in, ln);
-      weight_idx_yi(table_idx, &wy1, &iy, yi);
-      weight_idx_lt(&wt1, &it, lt);
-
-      return eval_at_inty(table_idx, iv, in, it, iy, wn1, wt1, wy1);
-    }
-
-    KOKKOS_INLINE_FUNCTION Real eval_at_lnt(const int table_idx, const int iv, const Real ln, const Real lt) const {
-      int in, it;
-      Real wn1, wt1;
-
-      weight_idx_ln(table_idx, &wn1, &in, ln);
-      weight_idx_lt(&wt1, &it, lt);
-
-      return eval_at_int(table_idx, iv, in, it, wn1, wt1);
-    }
-    */
-
     KOKKOS_INLINE_FUNCTION Real eval_at_inty(const int table_idx, const int iv, const int in, const int it, const int iy, const Real wn1, const Real wt1, const Real wy1) const {
       return
         (1.0-wn1) * ((1.0-wy1) * ((1.0-wt1) * table(index3D(table_idx, iv, in+0, iy+0, it+0))   +
@@ -843,8 +823,8 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       if (!(lt>log_t_shared(0))) {
         *it = 0;
         *w1 = 0.0;
-      } else if (!(lt<log_t_shared(n_t_shared - 1))) {
-        *it = n_t_shared-2;
+      } else if (!(lt<log_t_shared(nt - 1))) {
+        *it = nt-2;
         *w1 = 1.0;
       } else{
         *it = (lt - log_t_shared(0))*inv_dlog_t_shared;
@@ -854,11 +834,11 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     KOKKOS_INLINE_FUNCTION int index3D(const int table_idx, const int iv, const int in, const int iy, const int it) const {
-      return offset_table(table_idx) + it + n_t_shared*(iy + nyi(table_idx)*(in + nni(table_idx)*iv));
+      return offset_var(table_idx, iv) + it + nt*(iy + nyi(table_idx)*in);
     }
 
     KOKKOS_INLINE_FUNCTION int index2D(const int table_idx, const int iv, const int in, const int it) const {
-      return offset_table(table_idx) + it + n_t_shared*(in + nni(table_idx)*iv);
+      return offset_var(table_idx, iv) + it + nt*in;
     }
 
     // Minimum enthalpy per baryon
@@ -868,7 +848,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     bool initialised;
 
     // Photons
-    bool use_photons;
+    bool add_photons;
     
     // Constants for photons
     Real pi   = 3.1415926535897932;
@@ -886,31 +866,38 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
     Real Pmin_fac; // relative value to offset pressure to ensure positive
 
-    // Subtables
+    // number of subtables
     int n_tables_3D;
     int n_tables_2D;
-    int n_ni_full;
-    int n_yi_full;
-    int n_table_full;
 
-    // Table storage
-    DvceArray1D<int> nni, nyi;            // <number density, fraction> samples for each subtable
-    DvceArray1D<Real> inv_dlog_ni, inv_dyi; // inverse <log number density, fraction> spacing for each subtable
-    DvceArray1D<Real> Pmin;               // pressure offsets for where pressure<=0
+    // table scalar storage
+    int n_ni_full, n_yi_full;               // total number of points for [number density, fraction]
+    DvceArray1D<int>  nni, nyi;             // [number density, fraction] samples for each subtable
+    DvceArray1D<Real> inv_dlog_ni, inv_dyi; // inverse <[og number density, fraction] spacing for each subtable
+    DvceArray1D<Real> Pmin;                 // pressure offsets for where pressure<=0
+    DvceArray2D<int>  y_weights, n_weights; // weights for calculating ni and yi from nb and Y
 
-    // Sequential table storage. 
-    DvceArray1D<Real> ni, log_ni;                                   // <number density, log number density> for each subtable sequentially
-    DvceArray1D<Real> yi;                                           // fractions for each subtable sequentially
-    DvceArray1D<Real> table;                                        // data for each subtable sequentially
-    DvceArray1D<int>  offset_ni, offset_yi, offset_table; // offsets for start of each subtables data
+    // sequential table parameter storage
+    DvceArray1D<Real> ni;     // number density for each subtable
+    DvceArray1D<Real> log_ni; // log number density for each subtable
+    DvceArray1D<Real> yi;     // fractions for each (3D) subtable
 
-    DvceArray2D<int> y_weights, n_weights; // weights for calculating ni and yi from nb and Y
-
-    // Shared temperature axis
+    // shared temperature axis
+    int nt;
     DvceArray1D<Real> t_shared, log_t_shared;
-    int n_t_shared;
-    Real dlog_t_shared;
-    Real inv_dlog_t_shared;
+    Real dlog_t_shared, inv_dlog_t_shared;
+
+    // table value storage
+    int n_table;
+    DvceArray1D<Real> table;
+
+    // pointer offset storage
+    DvceArray1D<int>  offset_ni, offset_yi; // offsets for ni and yi parameters
+    DvceArray2D<int>  offset_var;           // offsets for vars within table
+    DvceArray2D<bool> available_var;        // indicates presence of optional variables
+
+    bool has_chemical_potentials;
+    bool has_neutrino_vars;
 
     /// The root solvers.
     /// This calculates the root at a given temperature index
@@ -936,7 +923,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
                                           wn1[i]  * pparent->table(pparent->index2D(i, iv, in[i]+1, it)));
           }
 
-          if (pparent->use_photons) {
+          if (pparent->add_photons) {
             if (iv==ECLOGP) {
               var_pt += pparent->photonPressureConstant * pow(pparent->t_shared(it),4);
             } else if (iv==ECLOGE) {
@@ -970,7 +957,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
             var_pt += pparent->exp2_(lvar[i] + wt*dlvar[i]);
           }
 
-          if (pparent->use_photons) {
+          if (pparent->add_photons) {
             int i = pparent->n_tables_3D+pparent->n_tables_2D;
             var_pt += pparent->exp2_(lvar[i] + wt*dlvar[i]);
           }
