@@ -400,26 +400,6 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return Energy(nb, T, Y)/(mb*nb) - 1;
     }
 
-    /// Calculate the baryon chemical potential, assumed to be `true' baryon CP
-    KOKKOS_INLINE_FUNCTION Real BaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
-      assert(has_chemical_potentials);
-      return ScalarChemicalPotential(nb, T, Y, 0);
-    }
-
-    /// Calculate the charge chemical potential
-    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(const Real nb, const Real T, const Real *Y) {
-      assert(initialised);
-      assert(has_chemical_potentials);
-      // This is not defined (yet?), return NAN
-      return std::numeric_limits<Real>::quiet_NaN();
-    }
-
-    /// Calculate the electron-lepton chemical potential
-    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
-      assert(has_chemical_potentials);
-      return ScalarChemicalPotential(nb, T, Y, 1);
-    }
-
     /// Calculate the scalar chemical potential
     KOKKOS_INLINE_FUNCTION Real ScalarChemicalPotential(const Real nb, const Real T, const Real *Y, const int idx) const {
       assert(initialised);
@@ -511,6 +491,178 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
       return result;
     }
+
+    /// Calculate the baryon chemical potential, assumed to be `true' baryon CP
+    KOKKOS_INLINE_FUNCTION Real BaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+      assert(has_chemical_potentials);
+      return ScalarChemicalPotential(nb, T, Y, 0);
+    }
+
+    /// Calculate the charge chemical potential
+    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(const Real nb, const Real T, const Real *Y) {
+      assert(initialised);
+      assert(has_chemical_potentials);
+      // This is not defined (yet?), return NAN
+      return std::numeric_limits<Real>::quiet_NaN();
+    }
+
+    /// Calculate the electron-lepton chemical potential
+    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+      assert(has_chemical_potentials);
+      return ScalarChemicalPotential(nb, T, Y, 1);
+    }
+
+    /// Calculate the neutron fraction
+    KOKKOS_INLINE_FUNCTION Real NeutronFraction(Real nb, Real T, Real *Y) const {
+      assert(initialised);
+      assert(has_neutrino_vars);
+      Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
+
+      // 3D tables
+      for (int i=0; i<n_tables_3D; ++i) {
+        if (!available_var(i,ECYFN)) {
+          continue;
+        }
+
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += (ni/nb)*eval_at_inty(i, ECYFN, in, it, iy, wn1, wt1, wy1);
+      }
+        
+      // 2D tables
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        if (!available_var(i,ECYFN)) {
+          continue;
+        }
+
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += (ni/nb)*eval_at_int(i, ECYFN, in, it, wn1, wt1);
+      }
+
+      // Use ternary instead of fmax: on IEEE-compliant hardware (Intel SYCL),
+      // fmax(0, NaN) = NaN, so a NaN from the table lookup would propagate.
+      return (result > 0.0) ? result : 0.0;;
+    }
+
+    /// Calculate the proton fraction
+    KOKKOS_INLINE_FUNCTION Real ProtonFraction(Real nb, Real T, Real *Y) const {
+      assert(initialised);
+      assert(has_neutrino_vars);
+      Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
+
+      // 3D tables
+      for (int i=0; i<n_tables_3D; ++i) {
+        if (!available_var(i,ECYFP)) {
+          continue;
+        }
+
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += (ni/nb)*eval_at_inty(i, ECYFP, in, it, iy, wn1, wt1, wy1);
+      }
+        
+      // 2D tables
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        if (!available_var(i,ECYFP)) {
+          continue;
+        }
+
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += (ni/nb)*eval_at_int(i, ECYFP, in, it, wn1, wt1);
+      }
+
+      // Use ternary instead of fmax: on IEEE-compliant hardware (Intel SYCL),
+      // fmax(0, NaN) = NaN, so a NaN from the table lookup would propagate.
+      return (result > 0.0) ? result : 0.0;;
+    }
+
+    /// Calculate trapped neutrino net number and energy densities
+    KOKKOS_INLINE_FUNCTION void TrappedNeutrinos(Real nb, Real T, Real *Y, Real n_nu[3], Real e_nu[3]) const {
+      Real mu_le, mu_lm, mu_lt;
+      
+      if (n_species >= 1) {
+        mu_le = ScalarChemicalPotential(nb, T, Y, 1);
+      } else {
+        mu_le = 0.0;
+      }
+
+      if (n_species >=2) {
+        mu_lm = ScalarChemicalPotential(nb, T, Y, 2);
+      } else {
+        mu_lm = 0.0;
+      }
+
+      if (n_species >=3) {
+        mu_lt = ScalarChemicalPotential(nb, T, Y, 3);
+      } else {
+        mu_lt = 0.0;
+      }
+
+      Real eta_e = mu_le/T;
+      Real eta_e2 = eta_e*eta_e;
+
+      Real eta_m = mu_lm/T;
+      Real eta_m2 = eta_m*eta_m;
+
+      Real eta_t = mu_lt/T;
+      Real eta_t2 = eta_t*eta_t;
+
+      Real T3 = T*T*T;
+      Real T4 = T3*T;
+
+      n_nu[0] = nu_n_prefactor * T3 * (eta_e * (pi2 + eta_e2)); // n_nu_e   - n_anu_e   [fm^-3]
+      n_nu[1] = nu_n_prefactor * T3 * (eta_m * (pi2 + eta_m2)); // n_nu_mu  - n_anu_mu  [fm^-3]
+      n_nu[2] = nu_n_prefactor * T3 * (eta_t * (pi2 + eta_t2)); // n_nu_tau - n_anu_tau [fm^-3]
+
+      e_nu[0] = nu_e_prefactor * T4 * (nu_7pi4_60 + 0.5*eta_e2*(pi2 + 0.5*eta_e2)); // e_nu_e   + e_anu_e   [MeV fm^-3]
+      e_nu[1] = nu_e_prefactor * T4 * (nu_7pi4_60 + 0.5*eta_m2*(pi2 + 0.5*eta_m2)); // e_nu_mu  + e_anu_mu  [MeV fm^-3]
+      e_nu[2] = nu_e_prefactor * T4 * (nu_7pi4_60 + 0.5*eta_t2*(pi2 + 0.5*eta_t2)); // e_nu_tau + e_anu_tau [MeV fm^-3]
+
+      return;
+    }
+
     /// Get the minimum enthalpy per baryon.
     KOKKOS_INLINE_FUNCTION Real MinimumEnthalpy() const {
       return min_h;
@@ -851,19 +1003,31 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     bool add_photons;
     
     // Constants for photons
-    Real pi   = 3.1415926535897932;
-    Real h_SI = 6.62607015e-34;  // Exact in J s
-    Real c_SI = 299792458.0;     // Exact in m s^-1
-    Real e_SI = 1.602176634e-19; // Exact in C
+    const Real pi   = 3.1415926535897932;
+    const Real pi2  = pi*pi;
+    const Real pi4  = pi2*pi2;
+    const Real h_SI = 6.62607015e-34;  // Exact in J s
+    const Real c_SI = 299792458.0;     // Exact in m s^-1
+    const Real e_SI = 1.602176634e-19; // Exact in C
 
-    Real hc_SI = h_SI*c_SI; // J m
-    Real MeV_SI = 1.0e6*e_SI; // J per MeV
-    Real hc_MeV = hc_SI * 1.0e15 / MeV_SI;
+    const Real hc_SI = h_SI*c_SI;   // J m (not reduced)
+    const Real MeV_SI = 1.0e6*e_SI; // J per MeV
+    const Real hc_MeVfm = hc_SI * 1.0e15 / MeV_SI; // MeV fm
 
-    Real photonEnergyConstant = 8.0 * pow(pi,5) / (15.0 * pow(hc_MeV,3.0));
-    Real photonPressureConstant = photonEnergyConstant/3.0;
-    Real photonEntropyConstant = 4.0*photonPressureConstant;
+    const Real photonEnergyConstant = 8.0 * pi*pi4 / (15.0 * pow(hc_MeVfm,3.0)); // (8/15)*pi^5*(hc)^-3 [MeV^-3 fm^-3]
+    const Real photonPressureConstant = photonEnergyConstant/3.0;
+    const Real photonEntropyConstant = 4.0*photonPressureConstant;
 
+    // Constants for neutrinos
+    const Real nu_n_prefactor = (4.0/3.0)*pi/pow(hc_MeVfm,3.0); // 4/3 *pi/(hc)**3 [MeV^-3 fm^-3]
+    const Real nu_e_prefactor = 4.0*pi/pow(hc_MeVfm,3.0);     // 4*pi/(hc)**3      [MeV^-3 fm^-3]
+
+    const Real nu_pi2_6    =      pi2/6.0;  // pi**2/6     [-]
+    const Real nu_7pi4_60  =  7.0*pi4/60.0; // 7*pi**4/60  [-]
+    const Real nu_7pi4_30  =  7.0*pi4/30.0; // 7*pi**4/30  [-]
+    const Real nu_7pi4_15  =  7.0*pi4/15.0; // 7*pi**4/15  [-]
+    const Real nu_14pi4_15 = 14.0*pi4/15.0; // 14*pi**4/15 [-]
+    
     Real Pmin_fac; // relative value to offset pressure to ensure positive
 
     // number of subtables
