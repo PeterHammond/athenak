@@ -70,7 +70,7 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       if (name.compare(0,9,"n_species") == 0) {n_species = std::stoi(value); continue;}
       if (name.compare(0,4,"n_ni") == 0) {n_ni_full = std::stoi(value); continue;}
       if (name.compare(0,4,"n_yi") == 0) {n_yi_full = std::stoi(value); continue;}
-      if (name.compare(0,3,"n_t") == 0) {nt = std::stoi(value); continue;}
+      if (name.compare(0,6,"n_temp") == 0) {nt = std::stoi(value); continue;}
       if (name.compare(0,7,"n_table") == 0) {n_table = std::stoi(value); continue;}
       if (name.compare(0,2,"mb") == 0) {mb = std::stod(value); continue;}
       if (name.compare(0,5,"min_n") == 0) {min_n = std::stod(value); continue;}
@@ -132,7 +132,7 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
       printf("n_species:    %d\n",n_species);
       printf("n_ni_full:    %d\n",n_ni_full);
       printf("n_yi_full:    %d\n",n_yi_full);
-      printf("n_t:          %d\n",nt);
+      printf("n_temp:       %d\n",nt);
       printf("n_table:      %d\n",n_table);
       printf("mb:           %e\n",mb);
       printf("min_n:        %e\n",min_n);
@@ -308,7 +308,7 @@ void EOSMultiTable<LogPolicy>::ReadTableFromFile(std::string dname, std::string 
         }
       }
 
-      printf("min_h: %e", min_h);
+      printf("min_h: %e\n", min_h);
     } else {
       printf("Read err: %d\n", err);
       Kokkos::abort("Abort for read error!");
@@ -449,7 +449,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
   }
 
   // Set storage offsets (first step)
-  for (int var_idx=1; var_idx<ECNVARS-1; ++var_idx) {
+  for (int var_idx=0; var_idx<ECNVARS-1; ++var_idx) {
     if (host_available_var(table_idx, var_idx)) {
       host_offset_var(table_idx, var_idx+1) = host_offset_var(table_idx, var_idx) + n_data_per_var;
     } else {
@@ -467,7 +467,7 @@ bool EOSMultiTable<LogPolicy>::Read3DTableFromFile(std::string fname, int table_
     }
   }
 
-  // Abort of expected and found number of variables doesn't match
+  // Abort if expected and found number of variables doesn't match
   if (n_vars_present != n_vars_expected) {
     printf("MultiTable 3D subtable %s, idx=%d, found an incorrect number, %d, of variables, %d!\n",fname.c_str(),table_idx,n_vars_present,n_vars_expected);
     success = false;
@@ -817,7 +817,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
   }
 
   // Set storage offsets (first step)
-  for (int var_idx=1; var_idx<ECNVARS-1; ++var_idx) {
+  for (int var_idx=0; var_idx<ECNVARS-1; ++var_idx) {
     if (host_available_var(table_idx, var_idx)) {
       host_offset_var(table_idx, var_idx+1) = host_offset_var(table_idx, var_idx) + n_data_per_var;
     } else {
