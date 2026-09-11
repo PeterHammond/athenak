@@ -501,9 +501,52 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     /// Calculate the charge chemical potential
     KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(const Real nb, const Real T, const Real *Y) {
       assert(initialised);
-      assert(has_chemical_potentials);
-      // This is not defined (yet?), return NAN
-      return std::numeric_limits<Real>::quiet_NaN();
+      assert(has_neutrino_vars);
+      Real result = 0.0;
+      Real lt = log2_(T);
+
+      int it;
+      Real wt1;
+      weight_idx_lt(&wt1, &it, lt);
+
+      // 3D Tables
+      for (int i=0; i<n_tables_3D; ++i) {
+        if (!available_var(i,ECMUNP)) {
+          continue;
+        }
+
+        Real ni, yi;
+        GetPartialInputs3D(i, nb, Y, ni, yi);
+        Real lni = log2_(ni);
+        
+        int in, iy;
+        Real wn1, wy1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+        weight_idx_yi(i, &wy1, &iy, yi);
+
+        result += eval_at_inty(i, ECMUNP, in, it, iy, wn1, wt1, wy1);
+      }
+
+      // 2D Tables
+      for (int i=n_tables_3D; i<n_tables_3D+n_tables_2D; ++i) {
+        if (!available_var(i,ECMUNP)) {
+          continue;
+        }
+
+        Real ni;
+        GetPartialInputs2D(i, nb, Y, ni);
+        Real lni = log2_(ni);
+        
+        int in;
+        Real wn1;
+
+        weight_idx_ln(i, &wn1, &in, lni);
+
+        result += eval_at_int(i, ECMUNP, in, it, wn1, wt1);
+      }
+
+      return result; 
     }
 
     /// Calculate the electron-lepton chemical potential
