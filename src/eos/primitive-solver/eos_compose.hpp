@@ -93,11 +93,6 @@ class EOSCompOSE : public EOSPolicyInterface, public LogPolicy, public SupportsE
     nu_bis_n_cut_max = 8;
     nu_grad_cells    = 1.0;
     nu_1D_bis_n_max  = 60;
-    // We don't want to root solver to fail unless something goes horribly wrong.
-    // Worst case scenario is bisection every other step, so for tol=1e-15
-    // the maximum number of steps should be:
-    // log_2(10)*15*2 \approx 100
-    root.iterations = 100;
   }
 
 /*
