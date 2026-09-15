@@ -49,6 +49,18 @@ RadiationM1::RadiationM1(MeshBlockPack *ppack, ParameterInput *pin)
     exit(EXIT_FAILURE);
   }
 
+  // Check: if muons are enabled, nscalars>=2
+  if constexpr (ENABLE_MUONS){
+    if (ismhd || ishydro){
+      int nsc = ismhd ? pmy_pack->pmhd->nscalars : pmy_pack->phydro->nscalars;
+      if (nsc < 2) {
+        std::cerr << "Error: radiation_m1 with muons requires nscalars >= 2 "
+                    "(<mhd>/nscalars or <hydro>/nscalars)" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+  
   nspecies = M1_TOTAL_NUM_SPECIES;
 
   params.gr_sources = pin->GetOrAddBoolean("radiation_m1", "gr_sources", true);
@@ -66,6 +78,12 @@ RadiationM1::RadiationM1(MeshBlockPack *ppack, ParameterInput *pin)
   params.source_maxiter = pin->GetOrAddInteger("radiation_m1", "source_maxiter", 64);
   params.source_Ye_min = pin->GetOrAddReal("radiation_m1", "source_Ye_min", 0);
   params.source_Ye_max = pin->GetOrAddReal("radiation_m1", "source_Ye_max", 0.6);
+
+  if constexpr (ENABLE_MUONS){
+    params.source_Ymu_min = pin->GetOrAddReal("radiation_m1", "source_Ymu_min", 0);
+    params.source_Ymu_max = pin->GetOrAddReal("radiation_m1", "source_Ymu_max", 0.6);
+  }
+
   params.source_thin_limit =
       pin->GetOrAddReal("radiation_m1", "source_thin_limit", 1. / 3.);
   params.source_thick_limit =
@@ -164,8 +182,24 @@ RadiationM1::RadiationM1(MeshBlockPack *ppack, ParameterInput *pin)
     nurates_params.use_decay = pin->GetOrAddBoolean("bns_nurates", "use_decay", true);
     nurates_params.use_BRT_brem =
         pin->GetOrAddBoolean("bns_nurates", "use_BRT_brem", false);
+    nurates_params.use_GP19_brem =
+        pin->GetOrAddBoolean("bns_nurates", "use_GP19_brem", false);
     nurates_params.eq_warmup_cycles =
         pin->GetOrAddInteger("bns_nurates", "eq_warmup_cycles", 1);
+    
+    // Enables muon reactions
+    if constexpr (ENABLE_MUONS){
+      nurates_params.use_muonic_beta =
+          pin->GetOrAddBoolean("bns_nurates", "use_muonic_beta", true);
+      nurates_params.use_inelastic_NMS =
+          pin->GetOrAddBoolean("bns_nurates", "use_inelastic_NMS", true);
+      nurates_params.use_muon_decay =
+          pin->GetOrAddBoolean("bns_nurates", "use_muon_decay", true);
+      nurates_params.use_WM_muon_ab =
+          pin->GetOrAddBoolean("bns_nurates", "use_WM_muon_ab", true);
+      nurates_params.use_SemiAnalytical_NMS =
+          pin->GetOrAddBoolean("bns_nurates", "use_SemiAnalytical_NMS", false);
+    }
 
     // Partially-equilibrated emissivity predictor. On by default: it is the scheme,
     // not an option on top of one. Off, Kirchhoff's law gets the local blackbody --
@@ -183,6 +217,8 @@ RadiationM1::RadiationM1(MeshBlockPack *ppack, ParameterInput *pin)
         pin->GetOrAddReal("bns_nurates", "peq_dlnT_tol", 1e-4);
     nurates_params.peq_dYe_tol =
         pin->GetOrAddReal("bns_nurates", "peq_dYe_tol", 1e-4);
+    nurates_params.peq_dYmu_tol =
+        pin->GetOrAddReal("bns_nurates", "peq_dYmu_tol", 1e-4);
 
     // The block that computes the equilibrium distribution -- the predictor's only
     // output -- is skipped when neither of these is set, so the predictor has nothing

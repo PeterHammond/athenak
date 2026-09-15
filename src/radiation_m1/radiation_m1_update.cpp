@@ -298,6 +298,7 @@ TaskStatus RadiationM1::TimeUpdate_(Driver *d, int stage) {
         // [E] Compute contribution from flux and geometric sources
         Real rEFN[M1_TOTAL_NUM_SPECIES][5];
         Real DDxp[M1_TOTAL_NUM_SPECIES];
+        Real DDxp_mu[M1_TOTAL_NUM_SPECIES];
         for (int nuidx = 0; nuidx < nspecies_; nuidx++) {
           // [E.1: Contribution from fluxes]
           for (int var = 0; var < nvars_; ++var) {
@@ -570,7 +571,12 @@ TaskStatus RadiationM1::TimeUpdate_(Driver *d, int stage) {
             if (nspecies_ > 1) {
               DDxp[nuidx] = -mb * (DrEFN[nuidx][M1_N_IDX] * (nuidx == 0) -
                                    DrEFN[nuidx][M1_N_IDX] * (nuidx == 1));
+              if constexpr (ENABLE_MUONS) {
+                DDxp_mu[nuidx] = -mb * (DrEFN[nuidx][M1_N_IDX] * (nuidx == 2) -
+                                        DrEFN[nuidx][M1_N_IDX] * (nuidx == 3));
+              }          
             }
+            
           }
 
           // [G] Limit sources
@@ -579,6 +585,10 @@ TaskStatus RadiationM1::TimeUpdate_(Driver *d, int stage) {
             const Real tau = (ismhd_ || ishydro_) ? umhd0_(m, IEN, k, j, i) : 0.;
             const Real dens = (ismhd_ || ishydro_) ? w0_(m, IDN, k, j, i) : 0.;
             const Real Y_e = (ismhd_ || ishydro_) ? w0_(m, IYF, k, j, i) : 0.;
+            Real Y_mu = 0.;
+            if constexpr (ENABLE_MUONS){
+              Y_mu = (ismhd_ || ishydro_) ?  w0_(m, IYF + 1, k, j, i) : 0.;
+            }
 
             theta = 1.0;
             Real DTau_sum = 0.0;
@@ -602,6 +612,7 @@ TaskStatus RadiationM1::TimeUpdate_(Driver *d, int stage) {
 
             if (nspecies_ > 1) {
               Real DDxp_sum = 0.0;
+              Real DDxp_mu_sum = 0.0;
               for (int nuidx = 0; nuidx < nspecies_; ++nuidx) {
                 Real Nstar =
                     u1_(m, CombinedIdx(nuidx, M1_N_IDX, nvars_), k, j, i) +
@@ -613,6 +624,9 @@ TaskStatus RadiationM1::TimeUpdate_(Driver *d, int stage) {
                                        theta);
                 }
                 DDxp_sum += DDxp[nuidx];
+                if constexpr (ENABLE_MUONS){
+                  DDxp_mu_sum += DDxp_mu[nuidx];
+                }
               }
               const Real DYe = DDxp_sum / dens;
               if (DYe > 0) {
@@ -626,6 +640,21 @@ TaskStatus RadiationM1::TimeUpdate_(Driver *d, int stage) {
                     params_.source_limiter *
                         Kokkos::fmin(params_.source_Ye_min - Y_e, 0.0) / DYe,
                     theta);
+              }
+
+              if constexpr (ENABLE_MUONS){
+                const Real DYmu = DDxp_mu_sum / dens;
+                if (DYmu > 0){
+                  theta = Kokkos::fmin(
+                      params_.source_limiter *
+                          Kokkos::fmax(params_.source_Ymu_max - Y_mu, 0.0) / DYmu,
+                      theta);
+                } else if (DYmu < 0) {
+                  theta = Kokkos::fmin(
+                      params_.source_limiter *
+                          Kokkos::fmin(params_.source_Ymu_min - Y_mu, 0.0) / DYmu,
+                      theta);
+                }
               }
             }
             theta = Kokkos::fmax(0.0, theta);
@@ -672,6 +701,9 @@ TaskStatus RadiationM1::TimeUpdate_(Driver *d, int stage) {
             umhd0_(m, IM3, k, j, i) -= theta * DrEFN[nuidx][M1_FZ_IDX];
             if (nspecies_ > 1) {
               umhd0_(m, IYF, k, j, i) += theta * DDxp[nuidx];
+              if constexpr (ENABLE_MUONS){
+                umhd0_(m, IYF + 1, k, j, i) += theta * DDxp_mu[nuidx];
+              }
             }
           }
         }

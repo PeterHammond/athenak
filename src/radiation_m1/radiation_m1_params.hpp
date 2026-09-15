@@ -76,8 +76,10 @@ struct RadiationM1Params {
   Real rad_E_floor;     // radiation energy density floor
   Real rad_N_floor;     // radiation number density floor
   Real rad_eps;         // Impose F_a F^a < (1 - rad_E_eps) E2
-  Real source_Ye_max;   // maximum allowed Ye for matter
-  Real source_Ye_min;   // minimum allowed Ye for matter
+  Real source_Ye_max;   // maximum allowed Y_e for matter
+  Real source_Ye_min;   // minimum allowed Y_e for matter
+  Real source_Ymu_max;   // maximum allowed Y_mu for matter
+  Real source_Ymu_min;   // minimum allowed Y_mu for matter
   Real source_limiter;  // limiter for matter source (0: sources disabled, 1: sources
                         // limited to avoid negative energies)
   Real source_epsabs;   // target absolute precision for non-linear solver
