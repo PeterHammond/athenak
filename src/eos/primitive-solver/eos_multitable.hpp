@@ -555,6 +555,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
       return ScalarChemicalPotential(nb, T, Y, 1);
     }
 
+    /// Calculate the muon-lepton chemical potential
+    KOKKOS_INLINE_FUNCTION Real MuonLeptonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+      assert(has_chemical_potentials);
+      return ScalarChemicalPotential(nb, T, Y, 2);
+    }
+
     /// Calculate the neutron fraction
     KOKKOS_INLINE_FUNCTION Real NeutronFraction(Real nb, Real T, Real *Y) const {
       assert(initialised);
