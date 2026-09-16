@@ -24,6 +24,7 @@ Lorene
 
 # bns_nurates
 src/bns_nurates/
+src/bns_nurates
 
 # python cache
 __pycache__/
