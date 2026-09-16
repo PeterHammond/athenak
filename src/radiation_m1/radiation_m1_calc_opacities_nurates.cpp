@@ -245,7 +245,7 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
             // fluid quantities
             nb = w0_(m, IDN, k, j, i) / mb;
             p = w0_(m, IPR, k, j, i);
-            Y = w0_(m, IYF, k, j, i);
+            Y[0] = w0_(m, IYF, k, j, i);
             T = eos.GetTemperatureFromP(nb, p, Y);
             yp = eos.GetProtonFraction(nb, T, Y);
             yn = eos.GetNeutronFraction(nb, T, Y);
@@ -711,7 +711,7 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                 const Real w_0e = a_0e/(1.0 + a_0e);
 
                 Real T_star = T;
-                Real Ye_star = Y;
+                Real Ye_star = Y[0];
 
                 // Tier-0 gate: no EOS calls at all. An optically thin cell has
                 // nothing to equilibrate with and must cost nothing. Ternaries not
@@ -724,7 +724,7 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                 w_max = (w_max > w_0e) ? w_max : w_0e;
 
                 if (w_finite && w_max >= nurates_params_.peq_w_floor) {
-                  Real Y_part[3] = {Y, 0.0, 0.0};
+                  Real Y_part[3] = {Y[0], 0.0, 0.0};
 
                   // Tier-1 gate: first-order bounds on the excursion the solve
                   // would produce, from the blackbody already in hand and c_v. A
@@ -855,7 +855,7 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                     nudens_1_peq[nuidx] = nudens_1_thin[nuidx];
                   }
                   T_star = T;
-                  Ye_star = Y;
+                  Ye_star = Y[0];
                 }
               }
             }
