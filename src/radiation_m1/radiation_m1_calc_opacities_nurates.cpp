@@ -182,7 +182,7 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
           calc_proj(u_d, u_u, proj_ud);
 
           // Compute lab frame energy density and number density
-          Real J[nspecies]{}, rnnu[nspecies]{};
+          Real J[M1_TOTAL_NUM_SPECIES]{}, rnnu[M1_TOTAL_NUM_SPECIES]{};
           for (int nuidx = 0; nuidx < nspecies_; ++nuidx) {
             AthenaPointTensor<Real, TensorSymm::NONE, 4, 1> F_d{};
             pack_F_d(adm.beta_u(m, 0, k, j, i), adm.beta_u(m, 1, k, j, i),
@@ -211,7 +211,8 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
           }
 
           // local undensitized neutrino quantities
-          Real nudens_0[nspecies]{}, nudens_1[nspecies]{}, chi_loc[nspecies]{};
+          Real nudens_0[M1_TOTAL_NUM_SPECIES]{}, nudens_1[M1_TOTAL_NUM_SPECIES]{};
+          Real chi_loc[M1_TOTAL_NUM_SPECIES]{};
           for (int nuidx = 0; nuidx < nspecies_; ++nuidx) {
             nudens_0[nuidx] = rnnu[nuidx] / volform;
             nudens_1[nuidx] = J[nuidx] / volform;
@@ -259,16 +260,17 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
           }
 
           // get emissivities and opacities
-          Real eta_0_loc[nspecies]{}, eta_1_loc[nspecies]{};
-          Real abs_0_loc[nspecies]{}, abs_1_loc[nspecies]{};
-          Real scat_0_loc[nspecies]{}, scat_1_loc[nspecies]{};
+          Real eta_0_loc[M1_TOTAL_NUM_SPECIES]{}, eta_1_loc[M1_TOTAL_NUM_SPECIES]{};
+          Real abs_0_loc[M1_TOTAL_NUM_SPECIES]{}, abs_1_loc[M1_TOTAL_NUM_SPECIES]{};
+          Real scat_0_loc[M1_TOTAL_NUM_SPECIES]{}, scat_1_loc[M1_TOTAL_NUM_SPECIES]{};
           // non-thermal (inelastic scattering / NEPS) emissivity and absorption,
           // both ENERGY (..._1_...) and NUMBER (..._0_...) channels; non-zero only
           // when use_nonthermal_separated is set
           // NUMBER has no emissivity counterpart: NEPS is subtracted out of abs_0
           // and never re-enters, unlike ENERGY, where eta_1_non_th is added back.
-          Real eta_1_non_th_loc[nspecies]{}, abs_1_non_th_loc[nspecies]{};
-          Real abs_0_non_th_loc[nspecies]{};
+          Real eta_1_non_th_loc[M1_TOTAL_NUM_SPECIES]{};
+          Real abs_1_non_th_loc[M1_TOTAL_NUM_SPECIES]{};
+          Real abs_0_non_th_loc[M1_TOTAL_NUM_SPECIES]{};
 
           // Note: everything sent and received are in code units
           if constexpr (ENABLE_MUONS){
@@ -279,7 +281,8 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                       nurates_params_, code_units, eos_units,
                       nurates_units);
           } else{
-            bns_nurates(nb, T, yp, yn, mu_n, mu_p, mu_e, nudens_0, nudens_1, chi_loc,
+            ComputeNuratesOpacities(nb, T, yp, yn, mu_n, mu_p, mu_e, nudens_0, nudens_1,
+                      chi_loc,
                       eta_0_loc, eta_1_loc, abs_0_loc, abs_1_loc, scat_0_loc,
                       scat_1_loc, eta_1_non_th_loc, abs_1_non_th_loc,
                       abs_0_non_th_loc,
@@ -345,14 +348,16 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                 (abs_0_non_th_loc[nuidx] > 0) ? abs_0_non_th_loc[nuidx] : 0;
           }
 
-          Real nudens_0_thin[nspecies]{}, nudens_1_thin[nspecies]{},
-              nudens_0_peq[nspecies]{}, nudens_1_peq[nspecies]{};
+          Real nudens_0_thin[M1_TOTAL_NUM_SPECIES]{};
+          Real nudens_1_thin[M1_TOTAL_NUM_SPECIES]{};
+          Real nudens_0_peq[M1_TOTAL_NUM_SPECIES]{};
+          Real nudens_1_peq[M1_TOTAL_NUM_SPECIES]{};
           // Thermal absorption after the non-LTE correction (Kirchhoff applies to
           // it alone) and the correction factor itself, needed below by the
           // no-Kirchhoff path. Both default to a no-op if the block is skipped.
-          Real abs_0_th[nspecies]{}, abs_1_th[nspecies]{};
+          Real abs_0_th[M1_TOTAL_NUM_SPECIES]{}, abs_1_th[M1_TOTAL_NUM_SPECIES]{};
 
-          Real corr_ae[nspecies];
+          Real corr_ae[M1_TOTAL_NUM_SPECIES];
           for (int idx = 0; idx < nspecies_; ++idx) corr_ae[idx] = 1.0;
 
           if (nurates_params_.use_kirchhoff_law ||

@@ -1136,17 +1136,20 @@ void NeutrinoDens_wmuons(Real mu_n, Real mu_p, Real mu_e, Real mu_mu, Real temp,
   const Real temp3 = temp * temp * temp;
   const Real temp4 = temp3 * temp;
 
-  n_nue = 4.0 * M_PI / hc_mevnm3 * temp3 * Fermi::fermi2(eta_nue);    // [nm^-3]
-  n_anue = 4.0 * M_PI / hc_mevnm3 * temp3 * Fermi::fermi2(eta_anue);  // [nm^-3]
-  n_num = 4.0 * M_PI / hc_mevnm3 * temp3 * Fermi::fermi2(eta_num);    // [nm^-3]
-  n_anum = 4.0 * M_PI / hc_mevnm3 * temp3 * Fermi::fermi2(eta_anum);  // [nm^-3]
-  n_nut = 4.0 * M_PI / hc_mevnm3 * temp3 * Fermi::fermi2(eta_nut);   // [nm^-3]
+  const Real pref_n = 4.0 * M_PI / hc_mevnm3 * temp3;   // [nm^-3]
+  const Real pref_en = 4.0 * M_PI / hc_mevnm3 * temp4;  // [MeV nm^-3]
 
-  en_nue = 4.0 * M_PI / hc_mevnm3 * temp4 * Fermi::fermi3(eta_nue);    // [MeV nm^-3]
-  en_anue = 4.0 * M_PI / hc_mevnm3 * temp4 * Fermi::fermi3(eta_anue);  // [MeV nm^-3]
-  en_num = 4.0 * M_PI / hc_mevnm3 * temp4 * Fermi::fermi3(eta_num);    // [MeV nm^-3]
-  en_anum = 4.0 * M_PI / hc_mevnm3 * temp4 * Fermi::fermi3(eta_anum);  // [MeV nm^-3]
-  en_nut = 4.0 * M_PI / hc_mevnm3 * temp4 * Fermi::fermi3(eta_nut);   // [MeV nm^-3]
+  n_nue = pref_n * bns_nurates::FDI_p2(eta_nue);
+  n_anue = pref_n * bns_nurates::FDI_p2(eta_anue);
+  n_num = pref_n * bns_nurates::FDI_p2(eta_num);
+  n_anum = pref_n * bns_nurates::FDI_p2(eta_anum);
+  n_nut = pref_n * bns_nurates::FDI_p2(eta_nut);
+
+  en_nue = pref_en * bns_nurates::FDI_p3(eta_nue);
+  en_anue = pref_en * bns_nurates::FDI_p3(eta_anue);
+  en_num = pref_en * bns_nurates::FDI_p3(eta_num);
+  en_anum = pref_en * bns_nurates::FDI_p3(eta_anum);
+  en_nut = pref_en * bns_nurates::FDI_p3(eta_nut);
 
   assert(Kokkos::isfinite(n_nue));
   assert(Kokkos::isfinite(n_anue));
