@@ -311,6 +311,23 @@ class EOS : public EOSPolicy, public ErrorPolicy {
     return std::numeric_limits<Real>::quiet_NaN();
    }
   }
+  
+    //! \fn Real GetMuonLeptonChemicalPotential(Real n, Real T, Real *Y)
+  //  \brief Get the muon-lepton chemical potential from the number density, temperature,
+  //         and particle fractions.
+  //
+  //  \param[in] n  The number density
+  //  \param[in] T  The temperature
+  //  \param[in] Y  An array of size n_species of the particle fractions.
+  //  \return The muon-lepton chemical potential for the EOS.
+  KOKKOS_INLINE_FUNCTION Real GetMuonLeptonChemicalPotential(Real n, Real T, Real *Y) const {
+   if constexpr (supports_potentials) {
+    return EOSPolicy::MuonLeptonChemicalPotential(n, T*code_units.TemperatureConversion(eos_units), Y) *
+            eos_units.ChemicalPotentialConversion(code_units);
+   } else {
+    return std::numeric_limits<Real>::quiet_NaN();
+   }
+  }
 
     //! \fn Real GetProtonFraction(Real n, Real T, Real *Y)
   //  \brief Get the proton fraction from the number density, temperature,
