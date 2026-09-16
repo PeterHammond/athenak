@@ -163,10 +163,21 @@ RadiationM1::RadiationM1(MeshBlockPack *ppack, ParameterInput *pin)
     nurates_params.use_pair = pin->GetOrAddBoolean("bns_nurates", "use_pair", true);
     nurates_params.use_brem = pin->GetOrAddBoolean("bns_nurates", "use_brem", true);
     nurates_params.use_iso = pin->GetOrAddBoolean("bns_nurates", "use_iso", true);
-    nurates_params.use_inelastic_scatt =
-        pin->GetOrAddBoolean("bns_nurates", "use_inelastic_scatt", false);
+    if (pin->DoesParameterExist("bns_nurates", "use_inelastic_scatt")) {
+      std::cerr << "Error: <bns_nurates>/use_inelastic_scatt has been renamed to "
+                   "use_inelastic_NEPS (as distinct from use_inelastic_NMS)"
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    if (pin->DoesParameterExist("bns_nurates", "use_WM_ab")) {
+      std::cerr << "Error: <bns_nurates>/use_WM_ab has been renamed to use_WM_el_ab "
+                   "(as distinct from use_WM_muon_ab)" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    nurates_params.use_inelastic_NEPS =
+        pin->GetOrAddBoolean("bns_nurates", "use_inelastic_NEPS", false);
     nurates_params.use_WM_el_ab =
-        pin->GetOrAddBoolean("bns_nurates", "use_WM_ab", true);
+        pin->GetOrAddBoolean("bns_nurates", "use_WM_el_ab", true);
     nurates_params.use_WM_sc = pin->GetOrAddBoolean("bns_nurates", "use_WM_sc", true);
     nurates_params.use_dU = pin->GetOrAddBoolean("bns_nurates", "use_dU", true);
     nurates_params.use_dm_eff = pin->GetOrAddBoolean("bns_nurates", "use_dm_eff", false);
