@@ -181,6 +181,14 @@ class EOSCompOSE : public EOSPolicyInterface, public LogPolicy, public SupportsE
     return eval_at_nty(ECMUL, n, T, Y[0]);
   }
 
+  /// Calculate the muon-lepton chemical potential
+  KOKKOS_INLINE_FUNCTION Real MuonLeptonChemicalPotential(Real n, Real T,
+                                                              Real *Y) const {
+    assert (m_initialized);
+    // TODO Complain?
+    return 0.0;
+  }
+
   /// Calculate the proton fraction
   KOKKOS_INLINE_FUNCTION Real ProtonFraction(Real n, Real T, Real *Y) const {
     assert (m_initialized);
