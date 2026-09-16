@@ -434,25 +434,16 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   }
 
 
-  KOKKOS_INLINE_FUNCTION bool GetBetaEquilibriumPartial_wmuons(Real n, Real e_rhs, Real *Yl_rhs,
-                                                         Real w_E_e, Real w_E_mu, Real w_E_t,
-                                                         Real w_L_e, Real w_L_mu,
-                                                         Real &T_eq, Real *Y_eq_e, Real *Y_eq_mu, 
-                                                         Real T_guess, Real *Y_guess,
-                                                         int *status = nullptr) const {
-    if constexpr (supports_potentials) {
-      // @TODO: TO BE DEFINED FOR MUONS:
-      int ierr = EOSPolicy::BetaEquilibriumPartial_wmuons(
-          n, e_rhs*code_units.PressureConversion(eos_units), Yl_rhs,
-          w_E_e, w_E_x, w_L, T_eq, Y_eq,
-          T_guess*code_units.TemperatureConversion(eos_units), Y_guess, status);
-
-      T_eq = T_eq*eos_units.TemperatureConversion(code_units);
-
-      return ierr==0;
-    } else {
-      return false;
-    }
+  //! \fn bool GetBetaEquilibriumPartial_wmuons(...)
+  //  \brief Muonic counterpart of GetBetaEquilibriumPartial. NOT IMPLEMENTED.
+  KOKKOS_INLINE_FUNCTION bool GetBetaEquilibriumPartial_wmuons(
+      Real n, Real e_rhs, Real *Yl_rhs,
+      Real w_E_e, Real w_E_mu, Real w_E_t,
+      Real w_L_e, Real w_L_mu,
+      Real &T_eq, Real *Y_eq_e, Real *Y_eq_mu,
+      Real T_guess, Real *Y_guess,
+      int *status = nullptr) const {
+    return false;
   }
 
   //! \fn Real GetTrappedNeutrinos(Real n, Real T, Real *Y, Real n_nu[3], Real e_nu[3])

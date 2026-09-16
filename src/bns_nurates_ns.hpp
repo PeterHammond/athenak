@@ -23,6 +23,7 @@
 
 namespace bns_nurates {
 #include "bns_nurates/include/distribution.hpp"     // NOLINT(build/include)
+#include "bns_nurates/include/kernels.hpp"          // NOLINT(build/include)
 #include "bns_nurates/include/integration.hpp"      // NOLINT(build/include)
 #include "bns_nurates/include/m1_opacities.hpp"     // NOLINT(build/include)
 }  // namespace bns_nurates

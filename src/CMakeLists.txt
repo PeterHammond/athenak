@@ -227,6 +227,7 @@ add_executable(
 # add bns_nurates
 if (ENABLE_NURATES)
     target_compile_definitions(athena PUBLIC ENABLE_NURATES)
+    target_compile_definitions(athena PUBLIC total_num_species=${M1_TOTAL_NUM_SPECIES})
     target_sources(athena
         PRIVATE
             radiation_m1/radiation_m1_calc_opacities_nurates.cpp

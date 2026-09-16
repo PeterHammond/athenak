@@ -486,11 +486,11 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                         : 0.5*(abs_0_loc[id_nue] + abs_0_loc[id_anue]);
 
                 const Real kbar_1mu =
-                    (J_e > 0.0)
+                    (J_mu > 0.0)
                         ? (abs_1_loc[id_num]*nudens_1[id_num] + abs_1_loc[id_anum]*nudens_1[id_anum])/J_mu
                         : 0.5*(abs_1_loc[id_num] + abs_1_loc[id_anum]);
                 const Real kbar_0mu =
-                    (n_e > 0.0)
+                    (n_mu > 0.0)
                         ? (abs_0_loc[id_num]*nudens_0[id_num] + abs_0_loc[id_anum]*nudens_0[id_anum])/n_mu
                         : 0.5*(abs_0_loc[id_num] + abs_0_loc[id_anum]);
 
@@ -613,7 +613,6 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
 
                       Real T_try = T;
                       Real Y_try[3] = {Y_e, Y_mu, 0.0};
-                      // @TODO: THIS FUNCTION MUST BE CHANGED
                       bool ok = eos.GetBetaEquilibriumPartial_wmuons(
                           nb, e_rhs, Yl_rhs, u_1e, u_1mu, u_1t, u_0e, u_0mu, 
                           T_try, &Y_try[0], &Y_try[1],
@@ -794,13 +793,15 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                       const Real u_1x = f_soft*w_1x;
                       const Real u_0e = f_soft*w_0e;
 
+                      const Real u[PEQ_NWEIGHTS] = {u_1e, u_1e, u_1x, u_0e, u_0e};
+
                       const Real e_rhs = e_mat + u_1e*J_e + u_1x*J_x;
                       Real Yl_rhs[3] = {Y + u_0e*N_L/nb, 0.0, 0.0};
 
                       Real T_try = T;
                       Real Ye_try[3] = {Y, 0.0, 0.0};
                       bool ok = eos.GetBetaEquilibriumPartial(
-                          nb, e_rhs, Yl_rhs, u_1e, u_1x, u_0e, T_try, &Ye_try[0],
+                          nb, e_rhs, Yl_rhs, u, T_try, &Ye_try[0],
                           T, Y_part);
 
                       if (ok && Kokkos::fabs(Kokkos::log(T_try/T)) <= dlnT_max &&
