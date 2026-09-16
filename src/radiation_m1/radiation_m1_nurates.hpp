@@ -35,7 +35,7 @@ struct NuratesParams {
   bool use_pair;
   bool use_brem;
   bool use_iso;
-  bool use_inelastic_scatt;
+  bool use_inelastic_NEPS;
   bool use_WM_el_ab;
   bool use_WM_sc;
   bool use_dU;
@@ -278,7 +278,7 @@ void ComputeNuratesOpacities(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_
   grey_op_params.opacity_flags.use_brem = nurates_params.use_brem;
   grey_op_params.opacity_flags.use_pair = nurates_params.use_pair;
   grey_op_params.opacity_flags.use_iso = nurates_params.use_iso;
-  grey_op_params.opacity_flags.use_inelastic_NEPS = nurates_params.use_inelastic_scatt;
+  grey_op_params.opacity_flags.use_inelastic_NEPS = nurates_params.use_inelastic_NEPS;
   grey_op_params.opacity_flags.use_muonic_beta = false;
   grey_op_params.opacity_flags.use_inelastic_NMS = false;
   grey_op_params.opacity_flags.use_muon_decay = false;
@@ -734,7 +734,7 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
   grey_op_params.opacity_flags.use_brem = nurates_params.use_brem;
   grey_op_params.opacity_flags.use_pair = nurates_params.use_pair;
   grey_op_params.opacity_flags.use_iso = nurates_params.use_iso;
-  grey_op_params.opacity_flags.use_inelastic_NEPS = nurates_params.use_inelastic_scatt;
+  grey_op_params.opacity_flags.use_inelastic_NEPS = nurates_params.use_inelastic_NEPS;
   grey_op_params.opacity_flags.use_muonic_beta = nurates_params.use_muonic_beta;
   grey_op_params.opacity_flags.use_inelastic_NMS = nurates_params.use_inelastic_NMS;
   grey_op_params.opacity_flags.use_muon_decay = nurates_params.use_muon_decay;
