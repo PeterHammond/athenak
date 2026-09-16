@@ -229,13 +229,13 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
             p = w0_(m, IPR, k, j, i);
             Y[0] = w0_(m, IYF, k, j, i);
             Y[1] = w0_(m, IYF+1, k, j, i);
-            T = eos.GetTemperatureFromP(nb, p, &Y);
-            yp = eos.GetProtonFraction(nb, T, &Y);
-            yn = eos.GetNeutronFraction(nb, T, &Y);
-            mu_b = eos.GetBaryonChemicalPotential(nb, T, &Y);
-            mu_q = eos.GetChargeChemicalPotential(nb, T, &Y);
-            mu_le = eos.GetElectronLeptonChemicalPotential(nb, T, &Y);
-            mu_lmu = eos.GetMuonLeptonChemicalPotential(nb, T, &Y);
+            T = eos.GetTemperatureFromP(nb, p, Y);
+            yp = eos.GetProtonFraction(nb, T, Y);
+            yn = eos.GetNeutronFraction(nb, T, Y);
+            mu_b = eos.GetBaryonChemicalPotential(nb, T, Y);
+            mu_q = eos.GetChargeChemicalPotential(nb, T, Y);
+            mu_le = eos.GetElectronLeptonChemicalPotential(nb, T, Y);
+            mu_lmu = eos.GetMuonLeptonChemicalPotential(nb, T, Y);
 
             mu_n = mu_b;
             mu_p = mu_b + mu_q;
@@ -246,12 +246,12 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
             nb = w0_(m, IDN, k, j, i) / mb;
             p = w0_(m, IPR, k, j, i);
             Y = w0_(m, IYF, k, j, i);
-            T = eos.GetTemperatureFromP(nb, p, &Y);
-            yp = eos.GetProtonFraction(nb, T, &Y);
-            yn = eos.GetNeutronFraction(nb, T, &Y);
-            mu_b = eos.GetBaryonChemicalPotential(nb, T, &Y);
-            mu_q = eos.GetChargeChemicalPotential(nb, T, &Y);
-            mu_le = eos.GetElectronLeptonChemicalPotential(nb, T, &Y);
+            T = eos.GetTemperatureFromP(nb, p, Y);
+            yp = eos.GetProtonFraction(nb, T, Y);
+            yn = eos.GetNeutronFraction(nb, T, Y);
+            mu_b = eos.GetBaryonChemicalPotential(nb, T, Y);
+            mu_q = eos.GetChargeChemicalPotential(nb, T, Y);
+            mu_le = eos.GetElectronLeptonChemicalPotential(nb, T, Y);
 
             mu_n = mu_b;
             mu_p = mu_b + mu_q;
@@ -509,8 +509,8 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                 const Real w_1t = a_1t/(1.0 + a_1t);
 
                 Real T_star = T;
-                Real Ye_star = Y_e;
-                Real Ymu_star = Y_mu;
+                Real Ye_star = Y[0];
+                Real Ymu_star = Y[1];
 
                 // Tier-0 gate: no EOS calls at all. An optically thin cell has
                 // nothing to equilibrate with and must cost nothing. Ternaries not
@@ -529,7 +529,7 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                 if (w_finite && w_max >= nurates_params_.peq_w_floor) {
                   
                   // @TODO: check Y_part meaning
-                  Real Y_part[3] = {Y_e, Y_mu, 0.0};
+                  Real Y_part[3] = {Y[0], Y[1], 0.0};
 
                   // Tier-1 gate: first-order bounds on the excursion the solve
                   // would produce, from the blackbody already in hand and c_v. A
@@ -609,18 +609,18 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                       const Real u_0mu = f_soft*w_0mu;
 
                       const Real e_rhs = e_mat + u_1e*J_e + u_1mu*J_mu + u_1t*J_t;
-                      Real Yl_rhs[3] = {Y_e + u_0e*N_L_e/nb, Y_mu + u_0mu*N_L_mu/nb, 0.0};
+                      Real Yl_rhs[3] = {Y[0] + u_0e*N_L_e/nb, Y[1] + u_0mu*N_L_mu/nb, 0.0};
 
                       Real T_try = T;
-                      Real Y_try[3] = {Y_e, Y_mu, 0.0};
+                      Real Y_try[3] = {Y[0], Y[1], 0.0};
                       bool ok = eos.GetBetaEquilibriumPartial_wmuons(
                           nb, e_rhs, Yl_rhs, u_1e, u_1mu, u_1t, u_0e, u_0mu, 
                           T_try, &Y_try[0], &Y_try[1],
                           T, Y_part);
 
                       if (ok && Kokkos::fabs(Kokkos::log(T_try/T)) <= dlnT_max &&
-                          Kokkos::fabs(Y_try[0] - Y_e) <= dYe_max &&
-                          Kokkos::fabs(Y_try[1] - Y_mu) <= dYmu_max) {
+                          Kokkos::fabs(Y_try[0] - Y[0]) <= dYe_max &&
+                          Kokkos::fabs(Y_try[1] - Y[1]) <= dYmu_max) {
                         T_star = T_try;
                         Ye_star = Y_try[0];
                         Ymu_star = Y_try[1];
@@ -672,8 +672,8 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                     nudens_1_peq[nuidx] = nudens_1_thin[nuidx];
                   }
                   T_star = T;
-                  Ye_star = Y_e;
-                  Ymu_star = Y_mu;
+                  Ye_star = Y[0];
+                  Ymu_star = Y[1];
                 }
               } 
               else {  // 4 FLAVORS CASE
@@ -796,16 +796,16 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
                       const Real u[PEQ_NWEIGHTS] = {u_1e, u_1e, u_1x, u_0e, u_0e};
 
                       const Real e_rhs = e_mat + u_1e*J_e + u_1x*J_x;
-                      Real Yl_rhs[3] = {Y + u_0e*N_L/nb, 0.0, 0.0};
+                      Real Yl_rhs[3] = {Y[0] + u_0e*N_L/nb, 0.0, 0.0};
 
                       Real T_try = T;
-                      Real Ye_try[3] = {Y, 0.0, 0.0};
+                      Real Ye_try[3] = {Y[0], 0.0, 0.0};
                       bool ok = eos.GetBetaEquilibriumPartial(
                           nb, e_rhs, Yl_rhs, u, T_try, &Ye_try[0],
                           T, Y_part);
 
                       if (ok && Kokkos::fabs(Kokkos::log(T_try/T)) <= dlnT_max &&
-                          Kokkos::fabs(Ye_try[0] - Y) <= dYe_max) {
+                          Kokkos::fabs(Ye_try[0] - Y[0]) <= dYe_max) {
                         T_star = T_try;
                         Ye_star = Ye_try[0];
                         break;
