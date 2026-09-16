@@ -219,24 +219,23 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
             chi_loc[nuidx] = chi_(m, nuidx, k, j, i);
           }
 
-          Real nb, p, Y_e, Y_mu, Y, T, yp, yn;
+          Real nb, p, T, yp, yn;
+          Real Y[MAX_SPECIES] = {0.0};
           Real mu_b, mu_q, mu_le, mu_lmu;
           Real mu_n, mu_p, mu_e, mu_mu;
           if constexpr(ENABLE_MUONS){
             // fluid quantities
             nb = w0_(m, IDN, k, j, i) / mb;
             p = w0_(m, IPR, k, j, i);
-            Y_e = w0_(m, IYF, k, j, i);
-            Y_mu = Y_e; //@TODO: change to w0_(m, IYF+1, k, j, i)
-            Y = Y_e + Y_mu;
-            // @TODO: Which Y do we need to use?
+            Y[0] = w0_(m, IYF, k, j, i);
+            Y[1] = w0_(m, IYF+1, k, j, i);
             T = eos.GetTemperatureFromP(nb, p, &Y);
             yp = eos.GetProtonFraction(nb, T, &Y);
             yn = eos.GetNeutronFraction(nb, T, &Y);
             mu_b = eos.GetBaryonChemicalPotential(nb, T, &Y);
             mu_q = eos.GetChargeChemicalPotential(nb, T, &Y);
             mu_le = eos.GetElectronLeptonChemicalPotential(nb, T, &Y);
-            mu_lmu = mu_le; //eos.GetMuonLeptonChemicalPotential(nb, T, &Y);
+            mu_lmu = eos.GetMuonLeptonChemicalPotential(nb, T, &Y);
 
             mu_n = mu_b;
             mu_p = mu_b + mu_q;
