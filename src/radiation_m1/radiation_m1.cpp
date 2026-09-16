@@ -49,18 +49,18 @@ RadiationM1::RadiationM1(MeshBlockPack *ppack, ParameterInput *pin)
     exit(EXIT_FAILURE);
   }
 
-  // Check: if muons are enabled, nscalars>=2
-  if constexpr (ENABLE_MUONS){
-    if (ismhd || ishydro){
-      int nsc = ismhd ? pmy_pack->pmhd->nscalars : pmy_pack->phydro->nscalars;
+  if constexpr (ENABLE_MUONS) {
+    if (ismhd || ishydro) {
+      const std::string fluid_block = ismhd ? "mhd" : "hydro";
+      int nsc = pin->GetOrAddInteger(fluid_block, "nscalars", 0);
       if (nsc < 2) {
-        std::cerr << "Error: radiation_m1 with muons requires nscalars >= 2 "
-                    "(<mhd>/nscalars or <hydro>/nscalars)" << std::endl;
+        std::cerr << "Error: radiation_m1 with muons requires nscalars >= 2, but <"
+                  << fluid_block << ">/nscalars is " << nsc << std::endl;
         exit(EXIT_FAILURE);
       }
     }
   }
-  
+
   nspecies = M1_TOTAL_NUM_SPECIES;
 
   params.gr_sources = pin->GetOrAddBoolean("radiation_m1", "gr_sources", true);
@@ -165,7 +165,8 @@ RadiationM1::RadiationM1(MeshBlockPack *ppack, ParameterInput *pin)
     nurates_params.use_iso = pin->GetOrAddBoolean("bns_nurates", "use_iso", true);
     nurates_params.use_inelastic_scatt =
         pin->GetOrAddBoolean("bns_nurates", "use_inelastic_scatt", false);
-    nurates_params.use_WM_ab = pin->GetOrAddBoolean("bns_nurates", "use_WM_ab", true);
+    nurates_params.use_WM_el_ab =
+        pin->GetOrAddBoolean("bns_nurates", "use_WM_ab", true);
     nurates_params.use_WM_sc = pin->GetOrAddBoolean("bns_nurates", "use_WM_sc", true);
     nurates_params.use_dU = pin->GetOrAddBoolean("bns_nurates", "use_dU", true);
     nurates_params.use_dm_eff = pin->GetOrAddBoolean("bns_nurates", "use_dm_eff", false);

@@ -278,7 +278,7 @@ void ComputeNuratesOpacities(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_
   grey_op_params.opacity_flags.use_brem = nurates_params.use_brem;
   grey_op_params.opacity_flags.use_pair = nurates_params.use_pair;
   grey_op_params.opacity_flags.use_iso = nurates_params.use_iso;
-  grey_op_params.opacity_flags.use_inelastic_scatt = nurates_params.use_inelastic_scatt;
+  grey_op_params.opacity_flags.use_inelastic_NEPS = nurates_params.use_inelastic_scatt;
   grey_op_params.opacity_flags.use_muonic_beta = false;
   grey_op_params.opacity_flags.use_inelastic_NMS = false;
   grey_op_params.opacity_flags.use_muon_decay = false;
@@ -291,10 +291,14 @@ void ComputeNuratesOpacities(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_
   grey_op_params.opacity_pars.use_NN_medium_corr = nurates_params.use_NN_medium_corr;
   grey_op_params.opacity_pars.neglect_blocking = nurates_params.neglect_blocking;
   grey_op_params.opacity_pars.use_decay = nurates_params.use_decay;
-  //grey_op_params.opacity_pars.brem_implementation = nurates_params.use_BRT_brem ? BREM_BRT06 : BREM_HR98;
-  grey_op_params.opacity_pars.brem_implementation = nurates_params.use_GP19_brem ? BREM_GP19 :
-                                          (nurates_params.use_BRT_brem ? BREM_BRT06 : BREM_HR98);
-  grey_op_params.opacity_pars.NMS_implementation = nurates_params.use_SemiAnalytical_NMS ? NMS_SemiAnalytical : NMS_KernelInterp;           
+  grey_op_params.opacity_pars.brem_implementation =
+      nurates_params.use_GP19_brem
+          ? bns_nurates::BREM_GP19
+          : (nurates_params.use_BRT_brem ? bns_nurates::BREM_BRT06
+                                         : bns_nurates::BREM_HR98);
+  grey_op_params.opacity_pars.NMS_implementation =
+      nurates_params.use_SemiAnalytical_NMS ? bns_nurates::NMS_SemiAnalytical
+                                            : bns_nurates::NMS_KernelInterp;
 
   // populate EOS quantities
   grey_op_params.eos_pars.nb = nb * unit_num_dens;  // [baryon/nm^3]
@@ -398,11 +402,22 @@ void ComputeNuratesOpacities(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_
                                               &nurates_params.quadrature_2,
                                               &grey_op_params);
 
-    // extract emissivities (number emissivity = thermal + non-thermal)
-    R_nue = opacities.eta_0_th[id_nue] + opacities.eta_0_non_th[id_nue];
-    R_anue = opacities.eta_0_th[id_anue] + opacities.eta_0_non_th[id_anue];
-    R_nux = (opacities.eta_0_th[id_nux] + opacities.eta_0_non_th[id_nux]) * 2.;
-    R_anux = (opacities.eta_0_th[id_anux] + opacities.eta_0_non_th[id_anux]) * 2.;
+    // NOTE ON THE NUMBER CHANNEL. bns_nurates' separated formalism carries no
+    // non-thermal NUMBER coefficients: NEPS and NMS redistribute neutrinos in
+    // energy without creating or destroying them, so eta_0 and kappa_0_a are
+    // thermal by construction (bns_nurates.hpp: "NEPS is not considered for
+    // computation of number emissivity (eta_0) and absorsivity (kappa_0_a)").
+    // They are therefore the eta_0_th / kappa_0_a_th of a library that splits
+    // them, and the non-thermal halves below are identically zero rather than
+    // merely unused. The caller subtracts sigma_0_non_th back out of sigma_0 to
+    // recover the thermal part for Kirchhoff's law, which with zero here is the
+    // identity -- and exactly, rather than up to the round-off of (a + b) - b.
+
+    // extract emissivities (number emissivity is thermal-only, see above)
+    R_nue = opacities.eta_0[id_nue];
+    R_anue = opacities.eta_0[id_anue];
+    R_nux = opacities.eta_0[id_nux] * 2.;
+    R_anux = opacities.eta_0[id_anux] * 2.;
     Q_nue = opacities.eta_th[id_nue] + opacities.eta_non_th[id_nue];
     Q_anue = opacities.eta_th[id_anue] + opacities.eta_non_th[id_anue];
     Q_nux = (opacities.eta_th[id_nux] + opacities.eta_non_th[id_nux]) * 2.;
@@ -414,11 +429,11 @@ void ComputeNuratesOpacities(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_
     Q_non_th_nux = opacities.eta_non_th[id_nux] * 2.;
     Q_non_th_anux = opacities.eta_non_th[id_anux] * 2.;
 
-    // extract absorption inverse mean-free path (number abs = thermal + non-thermal)
-    sigma_0_nue = opacities.kappa_0_a_th[id_nue] + opacities.kappa_0_a_non_th[id_nue];
-    sigma_0_anue = opacities.kappa_0_a_th[id_anue] + opacities.kappa_0_a_non_th[id_anue];
-    sigma_0_nux = opacities.kappa_0_a_th[id_nux] + opacities.kappa_0_a_non_th[id_nux];
-    sigma_0_anux = opacities.kappa_0_a_th[id_anux] + opacities.kappa_0_a_non_th[id_anux];
+    // extract absorption inverse mean-free path (number abs is thermal-only)
+    sigma_0_nue = opacities.kappa_0_a[id_nue];
+    sigma_0_anue = opacities.kappa_0_a[id_anue];
+    sigma_0_nux = opacities.kappa_0_a[id_nux];
+    sigma_0_anux = opacities.kappa_0_a[id_anux];
     sigma_1_nue = opacities.kappa_a_th[id_nue] + opacities.kappa_a_non_th[id_nue];
     sigma_1_anue = opacities.kappa_a_th[id_anue] + opacities.kappa_a_non_th[id_anue];
     sigma_1_nux = opacities.kappa_a_th[id_nux] + opacities.kappa_a_non_th[id_nux];
@@ -430,11 +445,12 @@ void ComputeNuratesOpacities(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_
     sigma_1_non_th_nux = opacities.kappa_a_non_th[id_nux];
     sigma_1_non_th_anux = opacities.kappa_a_non_th[id_anux];
 
-    // non-thermal (NEPS) NUMBER absorption, same convention as sigma_0 above (no x2)
-    sigma_0_non_th_nue = opacities.kappa_0_a_non_th[id_nue];
-    sigma_0_non_th_anue = opacities.kappa_0_a_non_th[id_anue];
-    sigma_0_non_th_nux = opacities.kappa_0_a_non_th[id_nux];
-    sigma_0_non_th_anux = opacities.kappa_0_a_non_th[id_anux];
+    // non-thermal NUMBER absorption: identically zero, see the note above. Left
+    // explicit so the caller's subtract-it-back-out step still reads as intended.
+    sigma_0_non_th_nue = 0.;
+    sigma_0_non_th_anue = 0.;
+    sigma_0_non_th_nux = 0.;
+    sigma_0_non_th_anux = 0.;
 
     // extract scattering inverse mean-free path
     scat_1_nue = opacities.kappa_s[id_nue];
@@ -711,14 +727,14 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
   }
       
   // populate opacity params
-  GreyOpacityParams grey_op_params = {0};
+  bns_nurates::GreyOpacityParams grey_op_params = {0};
 
   // reaction flags
   grey_op_params.opacity_flags.use_abs_em = nurates_params.use_abs_em;
   grey_op_params.opacity_flags.use_brem = nurates_params.use_brem;
   grey_op_params.opacity_flags.use_pair = nurates_params.use_pair;
   grey_op_params.opacity_flags.use_iso = nurates_params.use_iso;
-  grey_op_params.opacity_flags.use_inelastic_scatt = nurates_params.use_inelastic_scatt;
+  grey_op_params.opacity_flags.use_inelastic_NEPS = nurates_params.use_inelastic_scatt;
   grey_op_params.opacity_flags.use_muonic_beta = nurates_params.use_muonic_beta;
   grey_op_params.opacity_flags.use_inelastic_NMS = nurates_params.use_inelastic_NMS;
   grey_op_params.opacity_flags.use_muon_decay = nurates_params.use_muon_decay;
@@ -732,10 +748,14 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
   grey_op_params.opacity_pars.use_NN_medium_corr = nurates_params.use_NN_medium_corr;
   grey_op_params.opacity_pars.neglect_blocking = nurates_params.neglect_blocking;
   grey_op_params.opacity_pars.use_decay = nurates_params.use_decay;
-  //grey_op_params.opacity_pars.brem_implementation = nurates_params.use_BRT_brem ? BREM_BRT06 : BREM_HR98;
-  grey_op_params.opacity_pars.brem_implementation = nurates_params.use_GP19_brem ? BREM_GP19 :
-                                          (nurates_params.use_BRT_brem ? BREM_BRT06 : BREM_HR98);
-  grey_op_params.opacity_pars.NMS_implementation = nurates_params.use_SemiAnalytical_NMS ? NMS_SemiAnalytical : NMS_KernelInterp;           
+  grey_op_params.opacity_pars.brem_implementation =
+      nurates_params.use_GP19_brem
+          ? bns_nurates::BREM_GP19
+          : (nurates_params.use_BRT_brem ? bns_nurates::BREM_BRT06
+                                         : bns_nurates::BREM_HR98);
+  grey_op_params.opacity_pars.NMS_implementation =
+      nurates_params.use_SemiAnalytical_NMS ? bns_nurates::NMS_SemiAnalytical
+                                            : bns_nurates::NMS_KernelInterp;
 
 
   // populate EOS quantities
@@ -824,18 +844,18 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
     // from thermal processes. In this formalism NEPS is NOT included in the
     // number emissivity (eta_0) / absorption (kappa_0_a), and the energy
     // coefficients are split into thermal (_th) and non-thermal (_non_th) parts.
-    M1OpacitiesNonThermalSeparated opacities =
+    bns_nurates::M1OpacitiesNonThermalSeparated opacities =
         ComputeM1OpacitiesNonThermalSeparated(&nurates_params.quadrature,
                                               &nurates_params.quadrature_2,
                                               &grey_op_params);
 
-    // extract emissivities (number emissivity = thermal + non-thermal)
-    R_nue = opacities.eta_0_th[id_nue] + opacities.eta_0_non_th[id_nue];
-    R_anue = opacities.eta_0_th[id_anue] + opacities.eta_0_non_th[id_anue];
-    R_num = (opacities.eta_0_th[id_num] + opacities.eta_0_non_th[id_num]);
-    R_anum = (opacities.eta_0_th[id_anum] + opacities.eta_0_non_th[id_anum]);
-    R_nut = (opacities.eta_0_th[id_nut] + opacities.eta_0_non_th[id_nut]);
-    R_anut = (opacities.eta_0_th[id_anut] + opacities.eta_0_non_th[id_anut]);
+    // extract emissivities (number emissivity is thermal-only, see above)
+    R_nue = opacities.eta_0[id_nue];
+    R_anue = opacities.eta_0[id_anue];
+    R_num = opacities.eta_0[id_num];
+    R_anum = opacities.eta_0[id_anum];
+    R_nut = opacities.eta_0[id_nut];
+    R_anut = opacities.eta_0[id_anut];
     Q_nue = opacities.eta_th[id_nue] + opacities.eta_non_th[id_nue];
     Q_anue = opacities.eta_th[id_anue] + opacities.eta_non_th[id_anue];
     Q_num = (opacities.eta_th[id_num] + opacities.eta_non_th[id_num]);
@@ -851,13 +871,13 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
     Q_non_th_nut = opacities.eta_non_th[id_nut];
     Q_non_th_anut = opacities.eta_non_th[id_anut];
 
-    // extract absorption inverse mean-free path (number abs = thermal + non-thermal)
-    sigma_0_nue = opacities.kappa_0_a_th[id_nue] + opacities.kappa_0_a_non_th[id_nue];
-    sigma_0_anue = opacities.kappa_0_a_th[id_anue] + opacities.kappa_0_a_non_th[id_anue];
-    sigma_0_num = opacities.kappa_0_a_th[id_num] + opacities.kappa_0_a_non_th[id_num];
-    sigma_0_anum = opacities.kappa_0_a_th[id_anum] + opacities.kappa_0_a_non_th[id_anum];
-    sigma_0_nut = opacities.kappa_0_a_th[id_nut] + opacities.kappa_0_a_non_th[id_nut];
-    sigma_0_anut = opacities.kappa_0_a_th[id_anut] + opacities.kappa_0_a_non_th[id_anut];
+    // extract absorption inverse mean-free path (number abs is thermal-only)
+    sigma_0_nue = opacities.kappa_0_a[id_nue];
+    sigma_0_anue = opacities.kappa_0_a[id_anue];
+    sigma_0_num = opacities.kappa_0_a[id_num];
+    sigma_0_anum = opacities.kappa_0_a[id_anum];
+    sigma_0_nut = opacities.kappa_0_a[id_nut];
+    sigma_0_anut = opacities.kappa_0_a[id_anut];
     sigma_1_nue = opacities.kappa_a_th[id_nue] + opacities.kappa_a_non_th[id_nue];
     sigma_1_anue = opacities.kappa_a_th[id_anue] + opacities.kappa_a_non_th[id_anue];
     sigma_1_num = opacities.kappa_a_th[id_num] + opacities.kappa_a_non_th[id_num];
@@ -873,13 +893,15 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
     sigma_1_non_th_nut = opacities.kappa_a_non_th[id_nut];
     sigma_1_non_th_anut = opacities.kappa_a_non_th[id_anut];
 
-    // non-thermal (NEPS and NMS) NUMBER absorption, same convention as sigma_0 above (no x2)
-    sigma_0_non_th_nue = opacities.kappa_0_a_non_th[id_nue];
-    sigma_0_non_th_anue = opacities.kappa_0_a_non_th[id_anue];
-    sigma_0_non_th_num = opacities.kappa_0_a_non_th[id_num];
-    sigma_0_non_th_anum = opacities.kappa_0_a_non_th[id_anum];
-    sigma_0_non_th_nut = opacities.kappa_0_a_non_th[id_nut];
-    sigma_0_non_th_anut = opacities.kappa_0_a_non_th[id_anut];
+    // non-thermal NUMBER absorption: identically zero -- NEPS and NMS move
+    // neutrinos in energy, not in number, so the library computes no such term.
+    // Left explicit so the caller's subtract-it-back-out step reads as intended.
+    sigma_0_non_th_nue = 0.;
+    sigma_0_non_th_anue = 0.;
+    sigma_0_non_th_num = 0.;
+    sigma_0_non_th_anum = 0.;
+    sigma_0_non_th_nut = 0.;
+    sigma_0_non_th_anut = 0.;
 
     // extract scattering inverse mean-free path
     scat_1_nue = opacities.kappa_s[id_nue];
@@ -891,7 +913,7 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
   } else {
     // compute opacities with inelastic scattering folded into the totals
     // (NEPS included in eta_0 / kappa_0_a). Non-thermal arrays stay zero.
-    M1Opacities opacities = ComputeM1Opacities(&nurates_params.quadrature,
+    bns_nurates::M1Opacities opacities = ComputeM1Opacities(&nurates_params.quadrature,
                                                &nurates_params.quadrature_2,
                                                &grey_op_params);
 
