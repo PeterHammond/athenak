@@ -140,6 +140,22 @@ TaskStatus RadiationM1::CalcOpacityNurates_(Driver *pdrive, int stage) {
             scat_1_(m, nuidx, k, j, i) = 0;
           }
         } else {
+          // nvcc cannot first-capture a variable inside an `if constexpr`
+          // branch of an extended __host__ __device__ lambda. Every
+          // if constexpr(ENABLE_MUONS) block below is the first place in the
+          // lambda that touches these outer-scope variables, so touch them
+          // here first, in ordinary (non-constexpr) context, to force their
+          // capture before any if constexpr is reached.
+          (void)mb;
+          (void)eos;
+          (void)nurates_params_;
+          (void)code_units;
+          (void)eos_units;
+          (void)nurates_units;
+          (void)peq_cv_eps;
+          (void)peq_trust_c;
+          (void)peq_max_halvings;
+
           Real garr_dd[16];
           Real garr_uu[16];
           AthenaPointTensor<Real, TensorSymm::SYM2, 4, 2> g_dd{};
