@@ -136,7 +136,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     ~EOSMultiTable() {}
 
     /// Calculate the energy density using.
-    KOKKOS_INLINE_FUNCTION Real Energy(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Energy(Real nb, Real T, const Real *Y) const {
       assert(initialised);
       Real result = 0.0;
       Real lt = log2_(T);
@@ -183,7 +183,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the pressure using.
-    KOKKOS_INLINE_FUNCTION Real Pressure(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Pressure(Real nb, Real T, Real *Y) const {
       assert(initialised);
       Real result = 0.0;
       Real lt = log2_(T);
@@ -230,7 +230,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the entropy per baryon using.
-    KOKKOS_INLINE_FUNCTION Real Entropy(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Entropy(Real nb, Real T, Real *Y) const {
       assert(initialised);
       Real result = 0.0;
       Real lt = log2_(T);
@@ -278,7 +278,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the enthalpy per baryon using.
-    KOKKOS_INLINE_FUNCTION Real Enthalpy(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real Enthalpy(Real nb, Real T, Real *Y) const {
       assert(initialised);
       Real result = 0.0;
       Real lt = log2_(T);
@@ -327,7 +327,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the sound speed.
-    KOKKOS_INLINE_FUNCTION Real SoundSpeed(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real SoundSpeed(Real nb, Real T, Real *Y) const {
       assert(initialised);
       // N.B. all the extra nb factors cancel in the final eqn for cs2
       Real h = 0.0;     // h = p+e N.B. NOT (p+e)/nb
@@ -396,12 +396,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the specific internal energy per unit mass
-    KOKKOS_INLINE_FUNCTION Real SpecificInternalEnergy(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real SpecificInternalEnergy(Real nb, Real T, Real *Y) const {
       return Energy(nb, T, Y)/(mb*nb) - 1;
     }
 
     /// Calculate the scalar chemical potential
-    KOKKOS_INLINE_FUNCTION Real ScalarChemicalPotential(const Real nb, const Real T, const Real *Y, const int idx) const {
+    KOKKOS_INLINE_FUNCTION Real ScalarChemicalPotential(Real nb, Real T, Real *Y, int idx) const {
       assert(initialised);
       assert(has_chemical_potentials);
       Real result = 0.0;
@@ -445,7 +445,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the effective/average baryon chemical potential
-    KOKKOS_INLINE_FUNCTION Real EffectiveBaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real EffectiveBaryonChemicalPotential(Real nb, Real T, Real *Y) const {
       assert(initialised);
       assert(has_chemical_potentials);
       Real result = 0.0;
@@ -493,13 +493,13 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the baryon chemical potential, assumed to be `true' baryon CP
-    KOKKOS_INLINE_FUNCTION Real BaryonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real BaryonChemicalPotential(Real nb, Real T, Real *Y) const {
       assert(has_chemical_potentials);
       return ScalarChemicalPotential(nb, T, Y, 0);
     }
 
     /// Calculate the charge chemical potential
-    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(const Real nb, const Real T, const Real *Y) {
+    KOKKOS_INLINE_FUNCTION Real ChargeChemicalPotential(Real nb, Real T, Real *Y) const {
       assert(initialised);
       assert(has_neutrino_vars);
       Real result = 0.0;
@@ -525,7 +525,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         weight_idx_ln(i, &wn1, &in, lni);
         weight_idx_yi(i, &wy1, &iy, yi);
 
-        result += eval_at_inty(i, ECMUNP, in, it, iy, wn1, wt1, wy1);
+        result -= eval_at_inty(i, ECMUNP, in, it, iy, wn1, wt1, wy1);
       }
 
       // 2D Tables
@@ -550,13 +550,13 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Calculate the electron-lepton chemical potential
-    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real ElectronLeptonChemicalPotential(Real nb, Real T, Real *Y) const {
       assert(has_chemical_potentials);
       return ScalarChemicalPotential(nb, T, Y, 1);
     }
 
     /// Calculate the muon-lepton chemical potential
-    KOKKOS_INLINE_FUNCTION Real MuonLeptonChemicalPotential(const Real nb, const Real T, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MuonLeptonChemicalPotential(Real nb, Real T, Real *Y) const {
       assert(has_chemical_potentials);
       return ScalarChemicalPotential(nb, T, Y, 2);
     }
@@ -718,33 +718,33 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
     }
 
     /// Get the minimum pressure at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MinimumPressure(const Real nb, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MinimumPressure(Real nb, Real *Y) const {
       return Pressure(nb, min_T, Y);
     }
 
     /// Get the maximum pressure at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MaximumPressure(const Real nb, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MaximumPressure(Real nb, Real *Y) const {
       return Pressure(nb, max_T, Y);
     }
 
     /// Get the minimum energy at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MinimumEnergy(const Real nb, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MinimumEnergy(Real nb, Real *Y) const {
       return Energy(nb, min_T, Y);
     }
 
     /// Get the maximum energy at a given density and composition
-    KOKKOS_INLINE_FUNCTION Real MaximumEnergy(const Real nb, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real MaximumEnergy(Real nb, Real *Y) const {
       return Energy(nb, max_T, Y);
     }
 
     /// Temperature from energy density.
-    KOKKOS_INLINE_FUNCTION Real TemperatureFromE(const Real nb, const Real e, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real TemperatureFromE(Real nb, Real e, Real *Y) const {
       assert (initialised);
       return TemperatureFromVar<ECLOGE>(e, nb, Y);
     }
 
     /// Calculate the from pressure.
-    KOKKOS_INLINE_FUNCTION Real TemperatureFromP(const Real nb, const Real p, const Real *Y) const {
+    KOKKOS_INLINE_FUNCTION Real TemperatureFromP(Real nb, Real p, Real *Y) const {
       assert (initialised);
       Real p_target = p;
       for (int i=0; i<n_tables_3D+n_tables_2D; ++i) {
