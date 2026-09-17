@@ -69,6 +69,47 @@ TaskStatus RadiationM1::TimeUpdate(Driver *pdrive, int stage) {
     }
   }
 
+  auto *ptest_nqt_MT =
+      dynamic_cast<dyngr::DynGRMHDPS<Primitive::EOSMultiTable<Primitive::NQTLogs>,
+                                     Primitive::ResetFloor> *>(
+          pmy_pack->pdyngr);
+  if (ptest_nqt_MT != nullptr) {
+    switch (indcs.ng) {
+      case 2:
+        return TimeUpdate_<Primitive::EOSMultiTable<Primitive::NQTLogs>,
+                           Primitive::ResetFloor, 2>(pdrive, stage);
+        break;
+      case 3:
+        return TimeUpdate_<Primitive::EOSMultiTable<Primitive::NQTLogs>,
+                           Primitive::ResetFloor, 3>(pdrive, stage);
+        break;
+      case 4:
+        return TimeUpdate_<Primitive::EOSMultiTable<Primitive::NQTLogs>,
+                           Primitive::ResetFloor, 4>(pdrive, stage);
+        break;
+    }
+  }
+
+  auto *ptest_nlog_MT = dynamic_cast<dyngr::DynGRMHDPS<
+      Primitive::EOSMultiTable<Primitive::NormalLogs>, Primitive::ResetFloor> *>(
+      pmy_pack->pdyngr);
+  if (ptest_nlog_MT != nullptr) {
+    switch (indcs.ng) {
+      case 2:
+        return TimeUpdate_<Primitive::EOSMultiTable<Primitive::NormalLogs>,
+                           Primitive::ResetFloor, 2>(pdrive, stage);
+        break;
+      case 3:
+        return TimeUpdate_<Primitive::EOSMultiTable<Primitive::NormalLogs>,
+                           Primitive::ResetFloor, 3>(pdrive, stage);
+        break;
+      case 4:
+        return TimeUpdate_<Primitive::EOSMultiTable<Primitive::NormalLogs>,
+                           Primitive::ResetFloor, 4>(pdrive, stage);
+        break;
+    }
+  }
+
   if (!ismhd && !ishydro) {
     switch (indcs.ng) {
       case 2:

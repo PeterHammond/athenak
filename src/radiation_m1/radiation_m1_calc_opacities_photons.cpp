@@ -42,6 +42,23 @@ TaskStatus RadiationM1::CalcOpacityPhotons(Driver *pdrive, int stage) {
                                Primitive::ResetFloor>(pdrive, stage);
   }
 
+    auto *ptest_nqt_MT =
+      dynamic_cast<dyngr::DynGRMHDPS<Primitive::EOSMultiTable<Primitive::NQTLogs>,
+                                     Primitive::ResetFloor> *>(
+          pmy_pack->pdyngr);
+  if (ptest_nqt_MT != nullptr) {
+    return CalcOpacityPhotons_<Primitive::EOSMultiTable<Primitive::NQTLogs>,
+                               Primitive::ResetFloor>(pdrive, stage);
+  }
+
+  auto *ptest_nlog_MT = dynamic_cast<dyngr::DynGRMHDPS<
+      Primitive::EOSMultiTable<Primitive::NormalLogs>, Primitive::ResetFloor> *>(
+      pmy_pack->pdyngr);
+  if (ptest_nlog_MT != nullptr) {
+    return CalcOpacityPhotons_<Primitive::EOSMultiTable<Primitive::NormalLogs>,
+                               Primitive::ResetFloor>(pdrive, stage);
+  }
+
   std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
             << std::endl;
   std::cout << "Unsupported EOS type!\n";
