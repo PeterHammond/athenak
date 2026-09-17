@@ -31,7 +31,7 @@
 namespace Primitive {
 
 template<typename LogPolicy>
-class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public SupportsEntropy {
+class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public SupportsEntropy, public SupportsChemicalPotentials {
   private:
     using LogPolicy::log2_;
     using LogPolicy::exp2_;
