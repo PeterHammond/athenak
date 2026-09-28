@@ -125,7 +125,7 @@ TaskStatus DynGRMHDPS<EOSPolicy, ErrorPolicy>::CalcFluxes(Driver *pdriver, int s
     par_for("dyngrflux_x1_rsolve", DevExeSpace(),
       0, nmb1, kl, ku, jl, ju, il, iu,
       KOKKOS_LAMBDA(int m, int k, int j, int i) {
-        auto dyn_eos = dyn_eos_;
+        auto& dyn_eos = dyn_eos_;
         auto indcs = indcs_;  auto size = size_;  auto coord = coord_;  auto adm = adm_;
         auto wl = wl_;  auto wr = wr_;  auto bl = bl_;  auto br = br_;
         auto bx = bx_;  auto flx = flx1;  auto eyl = e31;  auto ezl = e21;
@@ -177,7 +177,7 @@ TaskStatus DynGRMHDPS<EOSPolicy, ErrorPolicy>::CalcFluxes(Driver *pdriver, int s
     par_for("dyngrflux_x2_rsolve", DevExeSpace(),
       0, nmb1, kl, ku, jl, ju, is-1, ie+1,
       KOKKOS_LAMBDA(int m, int k, int j, int i) {
-        auto dyn_eos = dyn_eos_;
+        auto& dyn_eos = dyn_eos_;
         auto indcs = indcs_;  auto size = size_;  auto coord = coord_;  auto adm = adm_;
         auto wl = wl_;  auto wr = wr_;  auto bl = bl_;  auto br = br_;
         auto bx = by_;  auto flx = flx2;  auto eyl = e12;  auto ezl = e32;
@@ -226,7 +226,7 @@ TaskStatus DynGRMHDPS<EOSPolicy, ErrorPolicy>::CalcFluxes(Driver *pdriver, int s
     par_for("dyngrflux_x3_rsolve", DevExeSpace(),
       0, nmb1, kl, ku, js-1, je+1, is-1, ie+1,
       KOKKOS_LAMBDA(int m, int k, int j, int i) {
-        auto dyn_eos = dyn_eos_;
+        auto& dyn_eos = dyn_eos_;
         auto indcs = indcs_;  auto size = size_;  auto coord = coord_;  auto adm = adm_;
         auto wl = wl_;  auto wr = wr_;  auto bl = bl_;  auto br = br_;
         auto bx = bz_;  auto flx = flx3;  auto eyl = e23;  auto ezl = e13;
