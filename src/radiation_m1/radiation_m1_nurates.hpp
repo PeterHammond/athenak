@@ -992,6 +992,64 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
   assert(Kokkos::isfinite(scat_1_nut));
   assert(Kokkos::isfinite(scat_1_anut));
 
+  bool nonfinite = false;
+  nonfinite = nonfinite || (Kokkos::isfinite(R_nue));
+  nonfinite = nonfinite || (Kokkos::isfinite(R_anue));
+  nonfinite = nonfinite || (Kokkos::isfinite(R_num));
+  nonfinite = nonfinite || (Kokkos::isfinite(R_anum));
+  nonfinite = nonfinite || (Kokkos::isfinite(R_nut));
+  nonfinite = nonfinite || (Kokkos::isfinite(R_anut));
+  nonfinite = nonfinite || (Kokkos::isfinite(Q_nue));
+  nonfinite = nonfinite || (Kokkos::isfinite(Q_anue));
+  nonfinite = nonfinite || (Kokkos::isfinite(Q_num));
+  nonfinite = nonfinite || (Kokkos::isfinite(Q_anum));
+  nonfinite = nonfinite || (Kokkos::isfinite(Q_nut));
+  nonfinite = nonfinite || (Kokkos::isfinite(Q_anut));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_0_nue));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_0_anue));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_0_num));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_0_anum));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_0_nut));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_0_anut));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_1_nue));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_1_anue));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_1_num));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_1_anum));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_1_nut));
+  nonfinite = nonfinite || (Kokkos::isfinite(sigma_1_anut));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_0_nue));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_0_anue));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_0_num));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_0_anum));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_0_nut));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_0_anut));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_1_nue));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_1_anue));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_1_num));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_1_anum));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_1_nut));
+  nonfinite = nonfinite || (Kokkos::isfinite(scat_1_anut));
+  if (nonfinite) {
+    Kokkos::printf("Opacity non-finite\n");
+    Kokkos::printf("nb=%21.16e, temp=%21.16e, yp=%21.16e, yn=%21.16e\n",
+      nb,temp,yp,yn);
+    Kokkos::printf("mu_n=%21.16e, mu_p=%21.16e, mu_e=%21.16e, mu_mu=%21.16e\n",
+      mu_n,mu_p,mu_e,mu_mu);
+    Kokkos::printf("R[0]=%21.16e, [1]=%21.16e, [2]=%21.16e, [3]=%21.16e, [4]=%21.16e, [5]=%21.16e\n",
+      R_nue,R_anue,R_num,R_anum,R_nut,R_anut);
+    Kokkos::printf("Q[0]=%21.16e, [1]=%21.16e, [2]=%21.16e, [3]=%21.16e, [4]=%21.16e, [5]=%21.16e\n",
+      Q_nue,Q_anue,Q_num,Q_anum,Q_nut,Q_anut);
+    Kokkos::printf("sigma_0[0]=%21.16e, [1]=%21.16e, [2]=%21.16e, [3]=%21.16e, [4]=%21.16e, [5]=%21.16e\n",
+      sigma_0_nue,sigma_0_anue,sigma_0_num,sigma_0_anum,sigma_0_nut,sigma_0_anut);
+    Kokkos::printf("sigma_1[0]=%21.16e, [1]=%21.16e, [2]=%21.16e, [3]=%21.16e, [4]=%21.16e, [5]=%21.16e\n",
+      sigma_1_nue,sigma_1_anue,sigma_1_num,sigma_1_anum,sigma_1_nut,sigma_1_anut);
+    Kokkos::printf("scat_0[0]=%21.16e, [1]=%21.16e, [2]=%21.16e, [3]=%21.16e, [4]=%21.16e, [5]=%21.16e\n",
+      scat_0_nue,scat_0_anue,scat_0_num,scat_0_anum,scat_0_nut,scat_0_anut);
+    Kokkos::printf("scat_1[0]=%21.16e, [1]=%21.16e, [2]=%21.16e, [3]=%21.16e, [4]=%21.16e, [5]=%21.16e\n",
+      scat_1_nue,scat_1_anue,scat_1_num,scat_1_anum,scat_1_nut,scat_1_anut);
+    assert(nonfinite);
+  }
+
   // convert to code units
   Real const unit_num_dens_dot = unit_num_dens / unit_time;
   Real const unit_ene_dens_dot = unit_ene_dens / unit_time;
