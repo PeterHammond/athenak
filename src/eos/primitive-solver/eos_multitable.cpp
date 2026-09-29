@@ -993,7 +993,7 @@ bool EOSMultiTable<LogPolicy>::Read2DTableFromFile(std::string fname, int table_
     for (size_t idx_ni=0; idx_ni<host_nni(table_idx); ++idx_ni) {
       for (size_t idx_t=0; idx_t<ntemp; ++idx_t) {
         size_t idx_flat_input = idx_t + ntemp*idx_ni;
-        size_t idx_flat_table = host_offset_var(table_idx, ECMUNI) + idx_flat_input;
+        size_t idx_flat_table = host_offset_var(table_idx, ECMUYI) + idx_flat_input;
         Real muyi_current = table_muyi[idx_flat_input];
         host_table(idx_flat_table) = muyi_current;
       }
