@@ -467,9 +467,12 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
         weight_idx_ln(i, &wn1, &in, lni);
         weight_idx_yi(i, &wy1, &iy, yi);
 
-        for (int idx=0; idx<n_species+1; ++idx) {
-          result += n_weights(i,idx)*eval_at_inty(i, ECMUNI, in, it, iy, wn1, wt1, wy1);
-          result += y_weights(i,idx)*eval_at_inty(i, ECMUYI, in, it, iy, wn1, wt1, wy1);
+        result += n_weights(i,0)*eval_at_inty(i, ECMUNI, in, it, iy, wn1, wt1, wy1);
+        result += y_weights(i,0)*eval_at_inty(i, ECMUYI, in, it, iy, wn1, wt1, wy1);
+
+        for (int idx=1; idx<n_species+1; ++idx) {
+          result += n_weights(i,idx+1)*Y[idx]*eval_at_inty(i, ECMUNI, in, it, iy, wn1, wt1, wy1);
+          result += y_weights(i,idx+1)*Y[idx]*eval_at_inty(i, ECMUYI, in, it, iy, wn1, wt1, wy1);
         }
       }
 
@@ -484,8 +487,10 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
         weight_idx_ln(i, &wn1, &in, lni);
 
-        for (int idx=0; idx<n_species+1; ++idx) {
-          result += n_weights(i,idx)*eval_at_int(i, ECMUNI, in, it, wn1, wt1);
+        result += n_weights(i,0)*eval_at_int(i, ECMUNI, in, it, wn1, wt1);
+
+        for (int idx=0; idx<n_species; ++idx) {
+          result += n_weights(i,idx+1)*Y[idx]*eval_at_int(i, ECMUNI, in, it, wn1, wt1);
         }
       }
 
@@ -543,7 +548,7 @@ class EOSMultiTable : public EOSPolicyInterface, public LogPolicy, public Suppor
 
         weight_idx_ln(i, &wn1, &in, lni);
 
-        result += eval_at_int(i, ECMUNP, in, it, wn1, wt1);
+        result -= eval_at_int(i, ECMUNP, in, it, wn1, wt1);
       }
 
       return result; 
