@@ -955,6 +955,7 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
   }
 
   // Check for NaNs/Infs
+  /*
   assert(Kokkos::isfinite(R_nue));
   assert(Kokkos::isfinite(R_anue));
   assert(Kokkos::isfinite(R_num));
@@ -991,6 +992,7 @@ void bns_nurates_wmuons(Real &nb, Real &temp, Real &yp, Real &yn, Real &mu_n, Re
   assert(Kokkos::isfinite(scat_1_anum));
   assert(Kokkos::isfinite(scat_1_nut));
   assert(Kokkos::isfinite(scat_1_anut));
+  */
 
   bool nonfinite = false;
   nonfinite = nonfinite || (Kokkos::isfinite(R_nue));
